@@ -88,6 +88,9 @@ export const App: React.FC = () => {
     'SimuForge Studio Core Initialized.',
     'Loaded 17-DOF Hash V3 Humanoid model.',
     'PCA9685 #1 (0x40) & PCA9685 #2 (0x41) mapped.',
+    'MAX98357A I2S Audio Amplifier ready.',
+    'HC-SR04 Ultrasonic Sensor active on GPIO 12/14.',
+    'SSD1306 OLED Display initialized at 0x3C.',
     'System ready. Standing at home position.',
   ]);
   const [isCodeRunning, setIsCodeRunning] = useState<boolean>(false);
@@ -108,6 +111,48 @@ export const App: React.FC = () => {
   // Log Helper
   const addLog = useCallback((msg: string) => {
     setLogs((prev) => [...prev.slice(-150), `[${new Date().toLocaleTimeString()}] ${msg}`]);
+  }, []);
+
+  // ========================================
+  // Robot Speech Synthesis (MAX98357A sim)
+  // ========================================
+  const handleRobotSpeak = useCallback((text: string) => {
+    if ('speechSynthesis' in window) {
+      // Cancel any ongoing speech
+      window.speechSynthesis.cancel();
+      
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.9;
+      utterance.pitch = 1.3; // Robot-like higher pitch
+      utterance.volume = 0.8;
+      
+      // Try to find a robotic-sounding voice
+      const voices = window.speechSynthesis.getVoices();
+      const preferredVoice = voices.find(v => 
+        v.name.includes('Google') || v.name.includes('English') || v.lang.startsWith('en')
+      );
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
+      }
+      
+      utterance.onstart = () => {
+        addLog(`🔊 Robot Speaker (MAX98357A): "${text}"`);
+      };
+      
+      window.speechSynthesis.speak(utterance);
+    } else {
+      addLog(`🔊 Speaker: "${text}" (TTS not supported in this browser)`);
+    }
+  }, [addLog]);
+
+  // Load voices when available (Chrome loads them asynchronously)
+  useEffect(() => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.getVoices();
+      };
+    }
   }, []);
 
   // Main Simulation Loop (125 Hz physics accumulator)
@@ -138,7 +183,7 @@ export const App: React.FC = () => {
 
         // 3. Compute RF signal propagation
         const newRfState = signalEngineRef.current.compute(
-          [robotPosition[0], robotPosition[1] + 0.225, robotPosition[2]],
+          [pos[0], pos[1] + 0.225, pos[2]],
           ARENA_OBSTACLES
         );
         setRfState(newRfState);
@@ -161,7 +206,7 @@ export const App: React.FC = () => {
 
     animationFrameId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animationFrameId);
-  }, [simState, simSpeed, dt, robotPosition]);
+  }, [simState, simSpeed, dt]);
 
   // Voice Command Trigger — with detailed logging
   const handleVoiceCommand = useCallback((cmd: VoiceCommand | string) => {
@@ -278,6 +323,9 @@ export const App: React.FC = () => {
       log: (msg: string) => {
         addLog(String(msg));
       },
+      speak: (text: string) => {
+        handleRobotSpeak(text);
+      },
     };
 
     try {
@@ -299,6 +347,10 @@ export const App: React.FC = () => {
     addLog('Script execution stopped by user.');
     kinematicsRef.current.homePosition();
   };
+
+  // Battery voltage with clamping — never goes below 6.0V
+  const phoneBatteryVoltage = Math.max(6.0, 7.4 - (simTime % 10) * 0.02);
+  const hwBatteryVoltage = Math.max(6.0, 7.4 - (simTime % 300) * 0.008);
 
   return (
     <div className="w-screen h-screen flex flex-col bg-[#0a0e17] text-[#e2e8f0] overflow-hidden select-none">
@@ -407,7 +459,7 @@ export const App: React.FC = () => {
       {/* 4. HARDWARE INSPECTOR PANEL (modal overlay) */}
       <HardwareInspectorPanel
         servos={servos}
-        batteryVoltage={7.4 - (simTime % 300) * 0.008}
+        batteryVoltage={hwBatteryVoltage}
         simTime={simTime}
         rfRssi={rfState.rssi}
         rfLinkQuality={rfState.linkQuality}
@@ -435,14 +487,18 @@ export const App: React.FC = () => {
         onVoiceCommand={handleVoiceCommand}
         onToggleArm={() => addLog('Motors toggled.')}
         onEmergencyStop={() => {
+          // E-Stop: Stop everything, pause simulation, reset robot
           stopCode();
+          setSimState('paused');
           kinematicsRef.current.clearAnimation();
           kinematicsRef.current.homePosition();
           kinematicsRef.current.resetPosition();
           setRobotPosition([0, 0, 0]);
           setRobotYaw(0);
           setServos({ ...kinematicsRef.current.getAllServos() });
-          addLog('🚨 EMERGENCY STOP ENGAGED! All PWM cut. Robot reset to origin.');
+          // Cancel any speech
+          if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+          addLog('🚨 EMERGENCY STOP ENGAGED! All PWM cut. Simulation paused. Robot reset to origin.');
         }}
         onHomePosition={() => {
           kinematicsRef.current.clearAnimation();
@@ -450,9 +506,11 @@ export const App: React.FC = () => {
           kinematicsRef.current.resetPosition();
           setRobotPosition([0, 0, 0]);
           setRobotYaw(0);
+          setServos({ ...kinematicsRef.current.getAllServos() });
           addLog('Returned to home standing position at origin.');
         }}
-        batteryVoltage={7.4 - (simTime % 10) * 0.02}
+        onRobotSpeak={handleRobotSpeak}
+        batteryVoltage={phoneBatteryVoltage}
         rssi={rfState.rssi}
         connected={rfState.linkQuality > 10}
         isVisible={phoneVisible}

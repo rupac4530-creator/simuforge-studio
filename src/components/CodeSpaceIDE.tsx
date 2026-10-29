@@ -251,10 +251,90 @@ bow();`;
 }
 pushUp(3);`;
 
+    case 'Sit Down':
+      return header + `async function sitDown() {
+  robot.log("▶ Sitting down — bending knees and hips");
+  robot.log("  → R_Knee_Pitch = 45°, L_Knee_Pitch = 45° (bend knees)");
+  robot.log("  → R_Hip_Pitch = 45°, L_Hip_Pitch = 45° (bend hips)");
+  robot.log("  → R_Ankle_Pitch = 120°, L_Ankle_Pitch = 120° (adjust ankles)");
+  robot.setServo("R_Knee_Pitch", 45);
+  robot.setServo("L_Knee_Pitch", 45);
+  robot.setServo("R_Hip_Pitch", 45);
+  robot.setServo("L_Hip_Pitch", 45);
+  robot.setServo("R_Ankle_Pitch", 120);
+  robot.setServo("L_Ankle_Pitch", 120);
+  await robot.wait(1000);
+  robot.speak("I am now sitting down.");
+  robot.log("✅ Sit Down completed — holding seated pose");
+}
+sitDown();`;
+
+    case 'Stand Up':
+      return header + `async function standUp() {
+  robot.log("▶ Standing up — returning all leg servos to home");
+  robot.log("  → All hip, knee, ankle servos → 90° (home)");
+  robot.setServo("R_Hip_Yaw", 90); robot.setServo("L_Hip_Yaw", 90);
+  robot.setServo("R_Hip_Roll", 90); robot.setServo("L_Hip_Roll", 90);
+  robot.setServo("R_Hip_Pitch", 90); robot.setServo("L_Hip_Pitch", 90);
+  robot.setServo("R_Knee_Pitch", 90); robot.setServo("L_Knee_Pitch", 90);
+  robot.setServo("R_Ankle_Pitch", 90); robot.setServo("L_Ankle_Pitch", 90);
+  await robot.wait(800);
+  robot.speak("Standing up straight!");
+  robot.log("✅ Stand Up completed!");
+}
+standUp();`;
+
+    case 'Left Bicep':
+      return header + `async function leftBicep() {
+  robot.log("▶ Left Bicep curl — flexing left arm");
+  robot.log("  → L_Shoulder_Pitch = 0° (arm up)");
+  robot.log("  → L_Elbow_Pitch = 45° (flex)");
+  robot.setServo("L_Shoulder_Pitch", 0);
+  robot.setServo("L_Elbow_Pitch", 45);
+  await robot.wait(500);
+  robot.speak("Check out this muscle!");
+  robot.log("  Holding flex pose for 1 second...");
+  await robot.wait(1000);
+  robot.homePosition();
+  robot.log("✅ Left Bicep completed!");
+}
+leftBicep();`;
+
+    case 'Double Biceps':
+      return header + `async function doubleBiceps() {
+  robot.log("▶ Double Bicep flex — classic bodybuilder pose");
+  robot.log("  → Both shoulders at 90°, both elbows at 45°");
+  robot.setServo("R_Shoulder_Pitch", 90);
+  robot.setServo("L_Shoulder_Pitch", 90);
+  robot.setServo("R_Elbow_Pitch", 45);
+  robot.setServo("L_Elbow_Pitch", 45);
+  await robot.wait(600);
+  robot.speak("Look at these guns!");
+  robot.log("  Holding double bicep pose for 1.5 seconds...");
+  await robot.wait(1500);
+  robot.homePosition();
+  robot.log("✅ Double Biceps completed!");
+}
+doubleBiceps();`;
+
+    case 'Home Position':
+      return header + `async function homePosition() {
+  robot.log("▶ Returning all 17 servos to HOME_ANGLES");
+  robot.log("  → Arms: R_Shoulder=0°, L_Shoulder=180°, Elbows=90°");
+  robot.log("  → Legs: All hip/knee/ankle = 90°");
+  robot.log("  → Head: Head_Yaw = 90° (center)");
+  robot.homePosition();
+  await robot.wait(800);
+  robot.speak("Home position.");
+  robot.log("✅ All servos at home position!");
+}
+homePosition();`;
+
     default:
       return header + `// This command uses the built-in animation engine.
 // Trigger it via: robot voice command or the gesture grid.
-robot.log("Executing: " + cmd);
+robot.log("Executing: ${cmd}");
+robot.speak("Executing ${cmd}");
 // The kinematics engine handles the servo coordination.
 // Each servo is driven by the PCA9685 at 50Hz PWM.
 `;
