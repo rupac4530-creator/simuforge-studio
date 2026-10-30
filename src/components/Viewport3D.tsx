@@ -14,6 +14,7 @@ import {
   Line,
 } from '@react-three/drei';
 import { ServoName, CameraPreset, SimulationConfig, ROBOT_DIMS } from '../types/simulation';
+import { DynamicsState, Vec3 } from '../engine/DynamicsEngine';
 import HumanoidModel from './HumanoidModel';
 
 // ==========================
@@ -31,6 +32,7 @@ interface Viewport3DProps {
   robotPosition?: [number, number, number];
   robotYaw?: number;
   rfHeatmapData?: { position: [number, number]; rssi: number }[];
+  dynamicsState?: DynamicsState | null;
 }
 
 // ==========================
@@ -146,9 +148,8 @@ function LOSRay({ from, to, obstructed }: { from: [number, number, number]; to: 
 function RFHeatmap({ data }: { data: { position: [number, number]; rssi: number }[] }) {
   const meshes = useMemo(() => {
     return data.map((pt, i) => {
-      // Map rssi (-100 to -30) → 0 to 1
       const t = THREE.MathUtils.clamp((pt.rssi + 100) / 70, 0, 1);
-      const color = new THREE.Color().setHSL(t * 0.33, 0.9, 0.5); // red→green
+      const color = new THREE.Color().setHSL(t * 0.33, 0.9, 0.5);
       return (
         <mesh key={i} position={[pt.position[0], 0.005, pt.position[1]]} rotation={[-Math.PI / 2, 0, 0]}>
           <circleGeometry args={[0.15, 16]} />
@@ -181,6 +182,128 @@ function isLOSObstructed(from: THREE.Vector3, to: THREE.Vector3): boolean {
   return false;
 }
 
+// ==========================
+// Dynamics Overlays (Phase 5 — Drake/MuJoCo-style)
+// ==========================
+
+/** CoM sphere + ground projection line + support polygon */
+function DynamicsOverlays({ dynamics, showCoM, showForces }: {
+  dynamics: DynamicsState;
+  showCoM: boolean;
+  showForces: boolean;
+}) {
+  const comRef = useRef<THREE.Mesh>(null);
+
+  // Pulsing CoM sphere
+  useFrame(({ clock }) => {
+    if (comRef.current) {
+      const s = 1 + Math.sin(clock.getElapsedTime() * 3) * 0.15;
+      comRef.current.scale.setScalar(s);
+    }
+  });
+
+  const groundY = dynamics.groundLevel + 0.002;
+
+  // Build support polygon shape for ground plane rendering
+  const supportShape = useMemo(() => {
+    if (dynamics.supportPolygon.length < 3) return null;
+    const shape = new THREE.Shape();
+    const pts = dynamics.supportPolygon;
+    shape.moveTo(pts[0][0], pts[0][1]); // XZ mapped to XY of shape
+    for (let i = 1; i < pts.length; i++) {
+      shape.lineTo(pts[i][0], pts[i][1]);
+    }
+    shape.closePath();
+    return shape;
+  }, [dynamics.supportPolygon]);
+
+  return (
+    <group>
+      {/* CoM sphere (yellow, translucent) */}
+      {showCoM && (
+        <>
+          <mesh ref={comRef} position={[dynamics.com[0], dynamics.com[1], dynamics.com[2]]}>
+            <sphereGeometry args={[0.012, 16, 16]} />
+            <meshStandardMaterial color="#eab308" emissive="#eab308" emissiveIntensity={0.8}
+              transparent opacity={0.9} />
+          </mesh>
+          {/* CoM label */}
+          <Text
+            position={[dynamics.com[0] + 0.025, dynamics.com[1] + 0.015, dynamics.com[2]]}
+            fontSize={0.02} color="#eab308" anchorX="left" anchorY="middle"
+          >
+            CoM
+          </Text>
+          {/* Ground projection dashed line */}
+          <Line
+            points={[
+              [dynamics.com[0], dynamics.com[1], dynamics.com[2]],
+              [dynamics.com[0], groundY, dynamics.com[2]],
+            ]}
+            color="#eab308" lineWidth={1} dashed dashScale={50} dashSize={0.01} gapSize={0.008}
+          />
+          {/* Ground projection dot */}
+          <mesh position={[dynamics.com[0], groundY, dynamics.com[2]]} rotation={[-Math.PI / 2, 0, 0]}>
+            <circleGeometry args={[0.008, 16]} />
+            <meshBasicMaterial color="#eab308" transparent opacity={0.7} />
+          </mesh>
+        </>
+      )}
+
+      {/* Support polygon on ground plane */}
+      {showForces && supportShape && (
+        <mesh position={[0, groundY, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <shapeGeometry args={[supportShape]} />
+          <meshBasicMaterial
+            color={dynamics.isStable ? '#22c55e' : '#ef4444'}
+            transparent opacity={0.15} side={THREE.DoubleSide}
+          />
+        </mesh>
+      )}
+
+      {/* Foot contact patches */}
+      {showForces && (
+        <>
+          {dynamics.leftFootContact.inContact && (
+            <mesh position={[dynamics.leftFootContact.position[0], groundY + 0.001, dynamics.leftFootContact.position[2]]}
+              rotation={[-Math.PI / 2, 0, 0]}>
+              <planeGeometry args={[0.055, 0.10]} />
+              <meshBasicMaterial color="#3b82f6" transparent opacity={0.25} side={THREE.DoubleSide} />
+            </mesh>
+          )}
+          {dynamics.rightFootContact.inContact && (
+            <mesh position={[dynamics.rightFootContact.position[0], groundY + 0.001, dynamics.rightFootContact.position[2]]}
+              rotation={[-Math.PI / 2, 0, 0]}>
+              <planeGeometry args={[0.055, 0.10]} />
+              <meshBasicMaterial color="#8b5cf6" transparent opacity={0.25} side={THREE.DoubleSide} />
+            </mesh>
+          )}
+        </>
+      )}
+
+      {/* Contact force arrows (vertical lines from ground) */}
+      {showForces && dynamics.leftFootContact.inContact && dynamics.leftFootContact.normalForce > 0.1 && (
+        <Line
+          points={[
+            [dynamics.leftFootContact.position[0], groundY, dynamics.leftFootContact.position[2]],
+            [dynamics.leftFootContact.position[0], groundY + dynamics.leftFootContact.normalForce * 0.02, dynamics.leftFootContact.position[2]],
+          ]}
+          color="#3b82f6" lineWidth={2}
+        />
+      )}
+      {showForces && dynamics.rightFootContact.inContact && dynamics.rightFootContact.normalForce > 0.1 && (
+        <Line
+          points={[
+            [dynamics.rightFootContact.position[0], groundY, dynamics.rightFootContact.position[2]],
+            [dynamics.rightFootContact.position[0], groundY + dynamics.rightFootContact.normalForce * 0.02, dynamics.rightFootContact.position[2]],
+          ]}
+          color="#8b5cf6" lineWidth={2}
+        />
+      )}
+    </group>
+  );
+}
+
 /** Manages camera presets and orbit controls together */
 function CameraRig({
   preset,
@@ -198,7 +321,6 @@ function CameraRig({
   const controlsRef = useRef<any>(null);
   const { camera } = useThree();
 
-  // Robot approximate head position for FPV
   const robotHeadY = (ROBOT_DIMS.foot.h + ROBOT_DIMS.shin.length + ROBOT_DIMS.thigh.length + ROBOT_DIMS.pelvis.h + ROBOT_DIMS.torso.h + ROBOT_DIMS.neck.h + ROBOT_DIMS.head.h) / 1000;
 
   useEffect(() => {
@@ -239,7 +361,6 @@ function CameraRig({
     }
   }, [preset, camera, robotHeadY]);
 
-  // For free-form camera control with sliders in orbit mode
   useEffect(() => {
     if (preset !== 'orbit' || !controlsRef.current) return;
     const yawRad = (yaw * Math.PI) / 180;
@@ -290,13 +411,12 @@ const Viewport3D: React.FC<Viewport3DProps> = ({
   robotPosition: robotPositionProp,
   robotYaw: robotYawProp,
   rfHeatmapData,
+  dynamicsState,
 }) => {
   const robotPosition = robotPositionProp ?? [0, 0, 0] as [number, number, number];
   const robotYaw = robotYawProp ?? 0;
-  // Robot world position (from kinematics engine)
   const robotPos: [number, number, number] = robotPosition;
 
-  // Approx robot center for LOS
   const robotCenterY = ROBOT_DIMS.totalHeight / 2000;
   const losFrom = new THREE.Vector3(baseStationPos[0], baseStationPos[1] + 1.55, baseStationPos[2]);
   const losTo = new THREE.Vector3(robotPos[0], robotCenterY, robotPos[2]);
@@ -361,6 +481,15 @@ const Viewport3D: React.FC<Viewport3DProps> = ({
           position={robotPos}
           robotYaw={robotYaw}
         />
+
+        {/* Dynamics Overlays — CoM, support polygon, contact forces */}
+        {dynamicsState && (config.showCoM || config.showForces) && (
+          <DynamicsOverlays
+            dynamics={dynamicsState}
+            showCoM={config.showCoM}
+            showForces={config.showForces}
+          />
+        )}
 
         {/* Arena obstacles */}
         <ArenaObstacles />

@@ -1,8 +1,8 @@
 import React from 'react';
 import { SimState, VoiceCommand, VOICE_COMMANDS } from '../types/simulation';
-import { Play, Pause, SkipForward, RotateCcw, Wifi, Bot, Layers, Cable, Box } from 'lucide-react';
+import { Play, Pause, SkipForward, RotateCcw, Wifi, Bot, Layers, Cable, Box, BarChart3 } from 'lucide-react';
 
-type ViewMode = 'simulator' | 'circuit';
+type ViewMode = 'simulator' | 'circuit' | 'dynamics';
 
 interface TopControlBarProps {
   simState: SimState;
@@ -81,6 +81,17 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
           >
             <Cable className="w-3 h-3" />
             <span>CIRCUIT EDITOR</span>
+          </button>
+          <button
+            onClick={() => onViewModeChange('dynamics')}
+            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
+              viewMode === 'dynamics'
+                ? 'bg-amber-600/30 text-amber-300 border border-amber-500/40'
+                : 'text-slate-500 hover:text-slate-300'
+            }`}
+          >
+            <BarChart3 className="w-3 h-3" />
+            <span>DYNAMICS</span>
           </button>
         </div>
 

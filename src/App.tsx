@@ -13,6 +13,8 @@ import {
 } from './types/simulation';
 import { HumanoidKinematics } from './engine/HumanoidKinematics';
 import { SignalEngine } from './engine/SignalEngine';
+import { DynamicsEngine, DynamicsState } from './engine/DynamicsEngine';
+import { SensorSuite, SensorState } from './engine/SensorSuite';
 import TopControlBar from './components/TopControlBar';
 import SceneTreePanel from './components/SceneTreePanel';
 import Viewport3D from './components/Viewport3D';
@@ -22,6 +24,7 @@ import CodeSpaceIDE from './components/CodeSpaceIDE';
 import PhoneRemoteHUD from './components/PhoneRemoteHUD';
 import HardwareInspectorPanel from './components/HardwareInspectorPanel';
 import CircuitEditorPanel from './components/CircuitEditorPanel';
+import DynamicsAnalyzerPanel from './components/DynamicsAnalyzerPanel';
 
 // Arena Obstacles for RF attenuation calculation
 const ARENA_OBSTACLES = [
@@ -35,6 +38,8 @@ export const App: React.FC = () => {
   // Engine Instances
   const kinematicsRef = useRef<HumanoidKinematics>(new HumanoidKinematics());
   const signalEngineRef = useRef<SignalEngine>(new SignalEngine());
+  const dynamicsEngineRef = useRef<DynamicsEngine>(new DynamicsEngine());
+  const sensorSuiteRef = useRef<SensorSuite>(new SensorSuite());
 
   // Simulation State
   const [simState, setSimState] = useState<SimState>('running');
@@ -46,6 +51,10 @@ export const App: React.FC = () => {
   const [servos, setServos] = useState<Record<ServoName, ServoState>>(() =>
     kinematicsRef.current.getAllServos()
   );
+
+  // Dynamics & Sensor State
+  const [dynamicsState, setDynamicsState] = useState<DynamicsState | null>(null);
+  const [sensorState, setSensorState] = useState<SensorState | null>(null);
 
   // Simulation Debug View Config
   const [config, setConfig] = useState<SimulationConfig>({
@@ -92,6 +101,8 @@ export const App: React.FC = () => {
     'MAX98357A I2S Audio Amplifier ready.',
     'HC-SR04 Ultrasonic Sensor active on GPIO 12/14.',
     'SSD1306 OLED Display initialized at 0x3C.',
+    'DynamicsEngine initialized — 13 rigid bodies, 17 DOF.',
+    'SensorSuite initialized — IMU (MPU6050), foot pressure, power monitor.',
     'System ready. Standing at home position.',
   ]);
   const [isCodeRunning, setIsCodeRunning] = useState<boolean>(false);
@@ -109,8 +120,8 @@ export const App: React.FC = () => {
   // Last voice command for code editor sync
   const [lastVoiceCommand, setLastVoiceCommand] = useState<string>('');
 
-  // View Mode: simulator vs circuit editor
-  const [viewMode, setViewMode] = useState<'simulator' | 'circuit'>('simulator');
+  // View Mode: simulator vs circuit editor vs dynamics analyzer
+  const [viewMode, setViewMode] = useState<'simulator' | 'circuit' | 'dynamics'>('simulator');
 
   // Log Helper
   const addLog = useCallback((msg: string) => {
@@ -185,14 +196,22 @@ export const App: React.FC = () => {
         // 2. Advance time
         setSimTime((t) => t + stepDt);
 
-        // 3. Compute RF signal propagation
+        // 3. Compute rigid-body dynamics (CoM, ZMP, contacts, torques, power)
+        const dynState = dynamicsEngineRef.current.compute(updatedServos, pos, yaw, simTime + stepDt);
+        setDynamicsState(dynState);
+
+        // 4. Compute sensor readings (IMU, foot pressure, power profile)
+        const senState = sensorSuiteRef.current.update(dynState, updatedServos, yaw, stepDt);
+        setSensorState(senState);
+
+        // 5. Compute RF signal propagation
         const newRfState = signalEngineRef.current.compute(
           [pos[0], pos[1] + 0.225, pos[2]],
           ARENA_OBSTACLES
         );
         setRfState(newRfState);
 
-        // 4. Update oscilloscope history every ~50ms
+        // 6. Update oscilloscope history every ~50ms
         if (Math.random() < 0.3) {
           setRssiHistory((prev) => [
             ...prev.slice(-60),
@@ -298,12 +317,16 @@ export const App: React.FC = () => {
     }
   }, []);
 
-  // Asynchronous Script Runner
+  // Asynchronous Script Runner — Extended Robot API (Phase 4)
   const runCode = async (userCode: string) => {
     if (isCodeRunning) return;
     setIsCodeRunning(true);
     stopCodeExecutionRef.current = false;
     addLog('Executing controller script in sandboxed runtime...');
+
+    // Capture current dynamics/sensor state references for the API
+    const getDyn = () => dynamicsState;
+    const getSen = () => sensorState;
 
     // Sandboxed Robot API exposed to user code
     const robot = {
@@ -330,6 +353,46 @@ export const App: React.FC = () => {
       speak: (text: string) => {
         handleRobotSpeak(text);
       },
+      // ===== Phase 4: Dynamics & Sensor API Extensions =====
+      getIMU: () => {
+        const s = getSen();
+        return s?.imu || {
+          accelX: 0, accelY: 9.81, accelZ: 0,
+          gyroX: 0, gyroY: 0, gyroZ: 0,
+          roll: 0, pitch: 0, yaw: 0,
+        };
+      },
+      getCoM: () => {
+        const d = getDyn();
+        return d ? {
+          x: d.com[0], y: d.com[1], z: d.com[2],
+          isStable: d.isStable,
+          stabilityMargin: d.stabilityMargin,
+        } : null;
+      },
+      getJointTorques: () => {
+        const d = getDyn();
+        return d?.jointTorques || {};
+      },
+      getFootContacts: () => {
+        const d = getDyn();
+        return d ? {
+          left: d.leftFootContact,
+          right: d.rightFootContact,
+        } : null;
+      },
+      getPowerDraw: () => {
+        const s = getSen();
+        return s?.power || null;
+      },
+      getGaitPhase: () => {
+        const d = getDyn();
+        return d?.gaitPhase || 'unknown';
+      },
+      getZMP: () => {
+        const d = getDyn();
+        return d ? { x: d.zmp[0], z: d.zmp[1] } : null;
+      },
     };
 
     try {
@@ -352,6 +415,23 @@ export const App: React.FC = () => {
     kinematicsRef.current.homePosition();
   };
 
+  // Reset handler with dynamics/sensor reset
+  const handleReset = useCallback(() => {
+    kinematicsRef.current.clearAnimation();
+    kinematicsRef.current.homePosition();
+    kinematicsRef.current.resetPosition();
+    setServos({ ...kinematicsRef.current.getAllServos() });
+    setRobotPosition([0, 0, 0]);
+    setRobotYaw(0);
+    setSimTime(0);
+    // Reset dynamics and sensor state
+    dynamicsEngineRef.current.reset();
+    sensorSuiteRef.current.reset();
+    setDynamicsState(null);
+    setSensorState(null);
+    addLog('Reset simulation to t=0, home posture, origin position. Dynamics & sensors reset.');
+  }, [addLog]);
+
   // Battery voltage with clamping — never goes below 6.0V
   const phoneBatteryVoltage = Math.max(6.0, 7.4 - (simTime % 10) * 0.02);
   const hwBatteryVoltage = Math.max(6.0, 7.4 - (simTime % 300) * 0.008);
@@ -369,26 +449,25 @@ export const App: React.FC = () => {
         onPause={() => setSimState('paused')}
         onStep={() => {
           kinematicsRef.current.update(dt);
-          setServos({ ...kinematicsRef.current.getAllServos() });
+          const updatedServos = kinematicsRef.current.getAllServos();
+          setServos({ ...updatedServos });
           setSimTime((t) => t + dt);
+          // Also step dynamics & sensors
+          const pos = kinematicsRef.current.getPosition();
+          const yaw = kinematicsRef.current.getYaw();
+          const dynState = dynamicsEngineRef.current.compute(updatedServos, pos, yaw, simTime + dt);
+          setDynamicsState(dynState);
+          const senState = sensorSuiteRef.current.update(dynState, updatedServos, yaw, dt);
+          setSensorState(senState);
         }}
-        onReset={() => {
-          kinematicsRef.current.clearAnimation();
-          kinematicsRef.current.homePosition();
-          kinematicsRef.current.resetPosition();
-          setServos({ ...kinematicsRef.current.getAllServos() });
-          setRobotPosition([0, 0, 0]);
-          setRobotYaw(0);
-          setSimTime(0);
-          addLog('Reset simulation to t=0, home posture, origin position.');
-        }}
+        onReset={handleReset}
         onSpeedChange={setSimSpeed}
         onVoiceCommand={handleVoiceCommand}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
       />
 
-      {/* 2. MAIN CONTENT — switches between Simulator and Circuit Editor */}
+      {/* 2. MAIN CONTENT — switches between Simulator, Circuit Editor, and Dynamics Analyzer */}
       {viewMode === 'simulator' ? (
         <>
           {/* SIMULATOR: 3-PANE WORKSPACE */}
@@ -416,6 +495,7 @@ export const App: React.FC = () => {
                 baseStationPos={baseStationPos}
                 robotPosition={robotPosition}
                 robotYaw={robotYaw}
+                dynamicsState={dynamicsState}
               />
 
               {/* Floating Camera Control HUD */}
@@ -465,6 +545,14 @@ export const App: React.FC = () => {
             lastVoiceCommand={lastVoiceCommand}
           />
         </>
+      ) : viewMode === 'dynamics' ? (
+        /* DYNAMICS ANALYZER: Full-screen physics analysis panel */
+        <DynamicsAnalyzerPanel
+          dynamics={dynamicsState}
+          sensors={sensorState}
+          simTime={simTime}
+          isVisible={viewMode === 'dynamics'}
+        />
       ) : (
         /* CIRCUIT EDITOR: Full-screen interactive schematic */
         <CircuitEditorPanel
@@ -515,6 +603,9 @@ export const App: React.FC = () => {
           setRobotPosition([0, 0, 0]);
           setRobotYaw(0);
           setServos({ ...kinematicsRef.current.getAllServos() });
+          sensorSuiteRef.current.reset();
+          setDynamicsState(null);
+          setSensorState(null);
           // Cancel any speech
           if ('speechSynthesis' in window) window.speechSynthesis.cancel();
           addLog('🚨 EMERGENCY STOP ENGAGED! All PWM cut. Simulation paused. Robot reset to origin.');

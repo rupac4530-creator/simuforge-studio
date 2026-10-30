@@ -1,4 +1,4 @@
-# SimuForge Studio — 17-DOF Humanoid Robot Digital Twin & Simulator
+# SimuForge Studio — 17-DOF Humanoid Robot Digital Twin & Multi-Physics Simulator
 
 [![Hugging Face Spaces](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces%20Live-FFD21E?style=flat&logo=huggingface&logoColor=black)](https://huggingface.co/spaces/Bedanta12/simuforge-studio)
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Live%20Demo-22c55e?style=flat&logo=github&logoColor=white)](https://rupac4530-creator.github.io/simuforge-studio/)
@@ -14,50 +14,86 @@
 | **🤗 Hugging Face Space** | [huggingface.co/spaces/Bedanta12/simuforge-studio](https://huggingface.co/spaces/Bedanta12/simuforge-studio) | Hugging Face Static Space |
 | **⚡ Direct Web App** | [bedanta12-simuforge-studio.static.hf.space](https://bedanta12-simuforge-studio.static.hf.space/index.html) | Hugging Face CDN |
 | **🌐 GitHub Pages** | [rupac4530-creator.github.io/simuforge-studio](https://rupac4530-creator.github.io/simuforge-studio/) | GitHub Actions Automated Pages |
+| **💻 Source Code** | [github.com/rupac4530-creator/simuforge-studio](https://github.com/rupac4530-creator/simuforge-studio) | GitHub Repository |
 
-**SimuForge Studio** is an open-source, browser-native 3D robotics simulator, kinematic testbed, and digital twin engineered specifically for the **17-DOF Hash V3 Humanoid Robot**.
+**SimuForge Studio** is an open-source, browser-native 3D robotics simulator, rigid-body multi-physics testbed, and digital twin engineered specifically for the **17-DOF Hash V3 Humanoid Robot**.
 
-Built with React 18, Three.js / React Three Fiber, Monaco Editor, and Web Speech API, SimuForge Studio provides a professional Webots-style environment to simulate forward kinematics, bipedal locomotion gaits, obstacle RF signal attenuation, virtual smartphone remote operations, and sandboxed microcontroller firmware routines.
+Combining principles from foundational physics simulators (**MuJoCo**, **Drake**, **Webots**, **Gazebo**), SimuForge Studio delivers generalized coordinate kinematics, static inverse dynamics, ground reaction spring-damper contact mechanics, 6-DOF MEMS IMU sensor fusion, an interactive circuit workbench, and sandboxed firmware scripting—all running in real time in standard WebGL browsers.
 
 ---
 
 ## 🌟 Key Capabilities
 
-- **17-DOF Real-Time Kinematics & Physics Engine**: Forward kinematics calculation for all 17 servo joints (10 leg joints, 6 arm joints, 1 head yaw joint) with real-world dimensions (420–450 mm height, 280 mm width, 1.2–1.5 kg estimated mass).
-- **Interactive Circuit & Wiring Editor (Digital Hardware Workbench)**:
-  - **Full-Screen Hardware Schematic View**: Switch instantly between **3D SIMULATOR** and **CIRCUIT EDITOR** via the top navigation bar.
-  - **Photorealistic Module Rendering**: SVG-rendered hardware modules matching physical components (ESP32 DevKit V1, Dual PCA9685 PWM drivers, SSD1306 0.96" OLED, MAX98357A I2S DAC, PAM8403 amplifier, HC-SR04 ultrasonic sensor, 2S 7.4V Li-ion pack, 6V 5A UBEC, 5V 3A Buck converter, dynamic speaker, and status LED).
-  - **Interactive Wiring & Pin Routing**: Click pins to make new connections or disconnect wires with instant bezier-routed paths.
-  - **Signal-Type Color Coding**: Distinct color coding for Power (Red), Ground (Dark Grey), I²C (Blue), I²S (Green), GPIO (Orange), and PWM (Violet) with animated signal flow indicators.
-  - **C++/Arduino Code Inspection**: Click any wire connection to inspect the exact Arduino/ESP32 C++ firmware snippet and library call governing that signal.
-  - **Module Specifications & Pinout Inspector**: Select any module to view operating voltages, current ratings, communication protocols, and register addresses.
-  - **Session History & Undo**: Real-time event log tracking all wiring modifications with one-click reset to factory wiring.
-  - **Live OLED Expression & Servo Monitor**: Test all 8 facial expressions and observe 17-channel PCA9685 servo angle telemetry updating in real time.
-- **Interactive Semi-Transparent Chassis**: Inspect internal packaging—ESP32 DevKit, dual PCA9685 PWM drivers, 2S Li-ion battery pack, buck converters, I2S amplifier, speaker, and structural harnesses.
-- **Virtual Smartphone Remote (BLE Emulation)**:
-  - **Live Voice Recognition**: Uses the Web Speech API (`webkitSpeechRecognition`) to process natural speech commands directly in the browser.
-  - **16 Pre-Programmed Gestures & Gaits**: One-tap triggers for *Say Hi*, *Shake Hands*, *Hands Up/Down*, *Bicep Flexes*, *Bow*, *Sit Down*, *Stand Up*, *Forward Walk*, *Backward Walk*, *Turn Left/Right*, *Push-Ups*, and *Celebration Dance*.
-  - **D-Pad Locomotion**: Precise walking and turning control with instant visual feedback and world translation.
-  - **Live Telemetry & Safety**: Battery voltage percentage indicator, BLE RSSI link monitor, ARM/DISARM motor toggle, and immediate Emergency Stop (E-Stop).
-- **Hardware Inspector & Diagnostic Suite**:
-  - **Component Directory**: Live status, bus addressing, and power ratings for all internal modules.
-  - **Servo Stress & Load Monitor**: Real-time angular deviation and torque stress calculation with thermal overload warnings.
-  - **Battery Energy Profile**: Dynamic 2S Li-ion discharge curve, current draw calculation (quiescent logic + active servo load), and runtime estimation.
-  - **SSD1306 OLED Display Preview**: Interactive face expression emulator (*Happy*, *Sad*, *Angry*, *Blink*, *Surprise*, *Sleep*, *Love*, *Cool*).
-  - **Ultrasonic Distance Radar**: Real-time HC-SR04 obstacle detection against arena barriers (Concrete, Brick, Glass, Metal).
-- **Integrated Monaco Code Studio**:
-  - Sandboxed JavaScript runtime with full robot control API (`robot.setServo`, `robot.homePosition`, `robot.wait`, `robot.log`).
-  - Pre-loaded gait and routine templates with step-by-step telemetry logging.
-  - Automatic template synchronization when voice commands or phone remote buttons are triggered.
-- **RF Signal Propagation & Link Budget Analyzer**:
-  - Multi-band propagation model: 2.4 GHz BLE, 2.4 GHz Wi-Fi, 915 MHz LoRa, 5.8 GHz FPV.
-  - Dynamic path loss, antenna gain (Tx/Rx), noise figure, real-time RSSI/SNR oscilloscope, and physical obstacle wall penetration loss.
+### 1. OmniSim Rigid-Body Dynamics & Multi-Physics Engine
+- **Accurate Mass Distribution**: Real mass and inertia table spanning 13 distinct rigid bodies totaling ~1.30 kg (torso 380g, pelvis 260g, head 95g, thighs 75g×2, shins 60g×2, feet 40g×2, upper arms 50g×2, forearms 57g×2).
+- **Generalized Coordinates Kinematics**: Forward kinematics chain with accumulated 3×3 rotation matrices and spatial transforms for all 17 degrees of freedom.
+- **Center of Mass (CoM) & Zero Moment Point (ZMP)**: Live 3D CoM position tracking, velocity estimation, ground projection, and quasi-static ZMP prediction.
+- **Spring-Damper Contact Mechanics**: Linear spring-damper ground contact model ($k=5000\text{ N/m}$, $d=50\text{ N}\cdot\text{s/m}$) evaluating 4-corner sole penetration and active contact patch surface area.
+- **Support Polygon & Stability Margin**: Real-time Graham scan 2D convex hull calculation in the ground plane ($XZ$), point-in-polygon containment check, and edge-distance stability margin.
+- **Inverse Dynamics Gravity Compensation**: Analytical static torque estimation per joint:
+  $$\tau_i = \hat{\mathbf{e}}_i \cdot \sum_{j \in \text{distal}(i)} (\mathbf{r}_{\text{CoM}, j} - \mathbf{r}_{\text{joint}, i}) \times (m_j \mathbf{g})$$
+- **System Energy & Work**: Conservation of energy monitoring tracking gravitational potential energy ($PE = \sum m_i g h_i$), translational kinetic energy ($KE = \frac{1}{2} M v_{\text{CoM}}^2$), and mechanical work.
+- **Gait Phase Detection**: Automatic classification into *Double Support*, *Left Stance*, *Right Stance*, and *Flight/Falling*.
+
+### 2. Physical Sensor Suite & Actuator Telemetry
+- **6-DOF MEMS IMU (MPU6050 / BNO055 Emulation)**:
+  - Proper **specific force** computation:
+    $$\mathbf{a}_{\text{measured}} = \mathbf{R}^T (\mathbf{a}_{\text{linear}} - \mathbf{g}_{\text{world}})$$
+    Reads $[0, +9.81, 0]\text{ m/s}^2$ at rest on flat ground.
+  - Allan variance bias random walk model and Box-Muller Gaussian sensor noise.
+  - Two-state complementary filter ($\alpha = 0.98$) fusing accelerometer gravity vectors and gyro rates for roll, pitch, and yaw.
+  - Sensor self-heating thermal curve ($25^\circ\text{C} \rightarrow 37^\circ\text{C}$).
+- **Foot Pressure & Center of Pressure (CoP)**: Ground reaction force distribution across feet with dynamic CoP coordinates.
+- **Motor Current, Power & Heat**: Per-servo mechanical power, electrical draw (nominal 6V rail), PWM duty cycle from position error, and actuator coil thermal estimation ($15^\circ\text{C/W}$).
+- **2S Li-ion Battery Discharge**: Dynamic cell voltage sag under instantaneous load ($R_{\text{int}} = 150\text{ m}\Omega$), capacity percentage, and remaining runtime.
+
+### 3. Dynamics Analyzer Panel (MuJoCo / Drake / Gazebo Quality)
+- **Top Bar View Mode Switcher**: Seamlessly toggle between **3D SIMULATOR**, **CIRCUIT EDITOR**, and **DYNAMICS**.
+- **World Statistics Status Bar**: High-level simulation telemetry: solver type, contact model, coordinates formulation, rigid body count, DOF count, simulation step count, sim time, active contact count, and total torque $\sum |\tau|$.
+- **Four Dedicated Analysis Tabs**:
+  - **Overview**: Circular stability gauge with percentage margin, gait phase badges, CoM/ZMP XYZ readouts, 200×200 2D support polygon SVG, 6-DOF IMU data grid, link mass breakdown table, energy progress bars, and battery status.
+  - **Joint Inspector**: Detailed 17-joint telemetry table with current angle, color-coded load bars, torque ($\text{N}\cdot\text{m}$), electrical wattage, mechanical stop limit badges (0–100%), angular velocity, and coil temperature.
+  - **Contacts & Stability**: Expanded ground projection canvas with CoM, ZMP, and CoP markers; left and right foot contact cards with normal forces ($\text{N}$), penetration depths ($\text{mm}$), and contact surface areas ($\text{mm}^2$); physical spring-damper parameter readouts.
+  - **Energy & Power**: Potential, kinetic, and total mechanical energy charts; electrical power breakdown; individual servo current and PWM duty cycle tables; Li-ion battery pack specifications.
+
+### 4. 3D Viewport Dynamics Overlays
+- **Pulsing CoM Marker**: Yellow sphere rendered directly at the 3D Center of Mass with a dashed ground projection drop line and ground projection dot.
+- **Support Polygon Projection**: Semi-transparent ground polygon (green when dynamically stable, pulsating red during fall risk).
+- **Contact Patches & Force Vectors**: Blue/purple ground contact soles with vertical force lines proportional to normal force.
+
+### 5. Interactive Circuit & Wiring Workbench
+- **Full-Screen Photorealistic Hardware Schematic**: SVG models of ESP32 DevKit V1, Dual PCA9685 drivers, SSD1306 0.96" OLED, MAX98357A I2S DAC, PAM8403 amplifier, HC-SR04 ultrasonic sensor, 2S 7.4V battery pack, 6V 5A UBEC, 5V 3A buck converter, speaker, and status LED.
+- **Interactive Wiring & Pin Routing**: Click pins to create or disconnect wires with smooth bezier routing.
+- **Signal-Type Color Coding**: Power (Red), Ground (Dark Grey), I²C (Blue), I²S (Green), GPIO (Orange), and PWM (Violet).
+- **C++/Arduino Code Inspection**: Click any wire connection to inspect the matching Arduino/ESP32 C++ firmware snippet and library call.
+- **Live OLED & Servo Monitor**: Test all 8 facial expressions and observe 17-channel PCA9685 servo telemetry in real time.
+
+### 6. Smartphone Remote & Voice Operations
+- **Live Speech Recognition**: Uses the Web Speech API (`webkitSpeechRecognition`) for natural voice control.
+- **16 Pre-Programmed Gestures & Gaits**: *Say Hi*, *Shake Hands*, *Hands Up/Down*, *Bicep Flexes*, *Bow*, *Sit Down*, *Stand Up*, *Forward Walk*, *Backward Walk*, *Turn Left/Right*, *Push-Ups*, and *Celebration Dance*.
+- **D-Pad Locomotion**: Precise walking and turning with visual feedback.
+- **Safety**: Motor arm/disarm toggle and Emergency Stop (E-Stop).
+
+### 7. Integrated Monaco Code Studio & Extended API
+- Sandboxed JavaScript runtime with full robot control and physics introspection API:
+  - `robot.setServo(name, angle)`
+  - `robot.homePosition()`
+  - `robot.wait(ms)`
+  - `robot.log(msg)`
+  - `robot.speak(text)`
+  - `robot.getIMU()` — Accelerometer, gyroscope, and complementary filtered roll/pitch/yaw
+  - `robot.getCoM()` — Center of mass coordinates and stability margin
+  - `robot.getJointTorques()` — Real-time gravity compensation torques
+  - `robot.getFootContacts()` — Left and right foot normal forces and contact states
+  - `robot.getPowerDraw()` — Total watts, current, and battery runtime
+  - `robot.getGaitPhase()` — Current gait state (*double_support*, *left_stance*, etc.)
+  - `robot.getZMP()` — Zero moment point coordinates
 
 ---
 
 ## 📐 Engineering Diagrams & Hardware Documentation
 
-The simulator's kinematic model, electronic interfaces, and structural dimensions are derived directly from the physical humanoid robot build documentation:
+The kinematic model, electronic interfaces, and structural dimensions are derived directly from the physical humanoid robot build documentation:
 
 ### 1. Structural Dimensions & Physical Specifications
 ![Structure and Dimensions](docs/diagrams/01-complete-structure-and-dimensions.jpg)
@@ -131,8 +167,10 @@ The simulator's kinematic model, electronic interfaces, and structural dimension
 | :--- | :--- |
 | **Frontend Core** | React 18, TypeScript 5.6, Vite 6 |
 | **3D Rendering** | Three.js (r170), `@react-three/fiber`, `@react-three/drei` |
+| **Physics & Dynamics**| Generalized Coordinates FK, Inverse Dynamics Gravity Solver, Spring-Damper Contact |
+| **Sensors & Fusion**| Specific Force MEMS IMU, Complementary Filter, Allan Variance Bias Walk |
 | **Code Editor** | Monaco Editor (`@monaco-editor/react`) |
-| **Charts & Signals**| Recharts 2.13 |
+| **Charts & Signals**| SVG Vector Visualization, Custom Responsive Canvases |
 | **Styling & UI** | TailwindCSS 3.4, Lucide React Icons |
 | **Voice Recognition**| HTML5 Web Speech API |
 
@@ -142,11 +180,11 @@ The simulator's kinematic model, electronic interfaces, and structural dimension
 
 ### Prerequisites
 
-Ensure you have **Node.js 18+** and **pnpm** (or npm / yarn) installed:
+Ensure you have **Node.js 18+** and **npm / pnpm / yarn** installed:
 
 ```bash
 node -v
-pnpm -v
+npm -v
 ```
 
 ### Installation
@@ -159,12 +197,12 @@ pnpm -v
 
 2. Install dependencies:
    ```bash
-   pnpm install
+   npm install
    ```
 
 3. Start the development server:
    ```bash
-   pnpm run dev
+   npx vite --host
    ```
 
 4. Open your browser at:
@@ -177,10 +215,10 @@ pnpm -v
 To verify TypeScript typing and create an optimized production build:
 
 ```bash
-pnpm run build
+npx vite build
 ```
 
-The compiled static assets will be output to the `dist/` directory ready for deployment to any static hosting provider (GitHub Pages, Vercel, Netlify, Cloudflare Pages).
+The compiled static assets will be output to the `dist/` directory ready for deployment to any static hosting provider.
 
 ---
 
@@ -198,18 +236,21 @@ simuforge-studio/
 ├── public/                           # Static assets & icons
 ├── src/
 │   ├── components/
-│   │   ├── CameraControlHUD.tsx       # Orbit, top, chase, side, FPV camera presets
+│   │   ├── CameraControlHUD.tsx       # Orbit, top, chase, side, FPV camera presets & HUD toggles
 │   │   ├── CircuitEditorPanel.tsx     # Interactive SVG hardware workbench, editable wiring & code
 │   │   ├── CodeSpaceIDE.tsx           # Monaco code editor with ESP32 sandboxed runtime
+│   │   ├── DynamicsAnalyzerPanel.tsx  # 4-tab MuJoCo/Drake dynamics & energy analyzer
 │   │   ├── HardwareInspectorPanel.tsx # 6-tab modal for diagnostic telemetry
 │   │   ├── HumanoidModel.tsx          # 17-DOF articulated 3D mesh with semi-transparent torso
 │   │   ├── PhoneRemoteHUD.tsx         # Virtual mobile remote with Web Speech & D-pad
 │   │   ├── SceneTreePanel.tsx         # Webots-style hierarchical scene & servo inspector
 │   │   ├── SignalAnalyzerPanel.tsx    # RF link propagation & oscilloscope panel
-│   │   ├── TopControlBar.tsx          # Transport, view switcher (3D Simulator / Circuit Editor), status
-│   │   └── Viewport3D.tsx             # Three.js Canvas, shadow maps, lighting, arena
+│   │   ├── TopControlBar.tsx          # Transport, view switcher (Simulator/Circuit/Dynamics), status
+│   │   └── Viewport3D.tsx             # Three.js Canvas, shadow maps, lighting, dynamics overlays
 │   ├── engine/
+│   │   ├── DynamicsEngine.ts          # 13-link rigid body kinematics, CoM, ZMP, torques, energy
 │   │   ├── HumanoidKinematics.ts      # 17-DOF forward kinematics & gait animator
+│   │   ├── SensorSuite.ts             # 6-DOF IMU specific force, complementary filter, power profile
 │   │   └── SignalEngine.ts            # RF propagation & multi-layer wall loss calculator
 │   ├── types/
 │   │   └── simulation.ts              # Master TypeScript interfaces, PCA map & constants
@@ -228,37 +269,30 @@ simuforge-studio/
 
 ## 🛠️ Usage Guide
 
-1. **Switching to Circuit Editor**:
-   * Click **CIRCUIT EDITOR** in the top navigation bar to toggle from the 3D simulator to the hardware wiring schematic view.
-   * **Inspect Hardware**: Click on any module (e.g., ESP32, PCA9685, MAX98357A) to display its full electrical specs and pin assignments in the inspector drawer.
-   * **Inspect Wiring Code**: Click on any wire connection to see the matching Arduino/C++ code snippet used in firmware.
-   * **Edit Connections**: Click a pin to start a wire connection, then click the target pin to connect. Click existing wires or disconnect buttons to remove connections.
-   * **OLED & Servo Channels**: Preview facial expressions on the live SSD1306 panel and monitor real-time servo channel pulse angles.
-   * Click **3D SIMULATOR** at any time to return to the interactive 3D robot scene.
-2. **Walking & Turning**:
-   * Open the **Phone Remote** (bottom-right button) $\rightarrow$ select the **🕹️ LOCOMOTION** tab $\rightarrow$ tap the Arrow buttons to command forward/backward walking and left/right turns.
-   * Alternatively, select *Move Forward* or *Turn Left* from the top **Voice Cmd** dropdown.
-3. **Natural Voice Control**:
-   * Open the Phone Remote $\rightarrow$ tap **🎤 TAP TO SPEAK** $\rightarrow$ say commands like *"Say Hi"*, *"Move Forward"*, *"Turn Left"*, *"Dance"*, or *"Sit Down"*.
-4. **Inspecting Internal Electronics**:
-   * Orbit the camera around the robot or zoom into the chest. The outer aluminum shell is rendered semi-transparent (35% opacity), revealing the green ESP32 board, dual blue PCA9685 boards, Li-ion battery, BECs, and color-coded bus wiring.
-   * Click the **🔧 HARDWARE INSPECTOR** button (bottom-left) to view live component specifications, servo stress gauges, battery telemetry, OLED expressions, and ultrasonic obstacle radar.
-5. **Writing Custom Scripts**:
-   * Expand the **Controller Code Space** at the bottom of the screen. Select a template or write custom asynchronous JavaScript using the exposed `robot` object:
+1. **Viewing Dynamics & Multi-Physics**:
+   * Click **DYNAMICS** in the top navigation bar to access the full-screen physics dashboard.
+   * Switch between **Overview**, **Joint Inspector**, **Contacts & Stability**, and **Energy & Power** tabs to monitor real-time mechanical and electrical telemetry.
+   * Switch back to **3D SIMULATOR** and check **CoM** and **Forces** on the floating Camera HUD to see 3D visual markers for the Center of Mass, support polygon, and contact forces.
+2. **Switching to Circuit Editor**:
+   * Click **CIRCUIT EDITOR** in the top bar to inspect hardware wiring. Click pins to route wires, click wires to inspect firmware C++ snippets, or test OLED facial expressions.
+3. **Walking & Turning**:
+   * Open the **Phone Remote** $\rightarrow$ tap the Arrow buttons to command walking and turning routines.
+4. **Natural Voice Control**:
+   * Tap **🎤 TAP TO SPEAK** on the Phone Remote and speak gestures like *"Say Hi"*, *"Move Forward"*, *"Turn Left"*, *"Dance"*, or *"Sit Down"*.
+5. **Writing Custom Scripts with Extended API**:
+   * Use the **Controller Code Space** at the bottom to write custom routines:
      ```javascript
-     async function customWave() {
-       robot.log("Starting custom wave...");
-       robot.setServo("R_Shoulder_Pitch", 180);
-       await robot.wait(500);
-       robot.setServo("R_Elbow_Pitch", 60);
-       await robot.wait(300);
-       robot.setServo("R_Elbow_Pitch", 120);
-       await robot.wait(300);
-       robot.homePosition();
+     async function stabilizeGait() {
+       robot.log("Checking IMU and CoM stability...");
+       const imu = robot.getIMU();
+       robot.log(`Current Pitch: ${imu.pitch.toFixed(1)}°, Roll: ${imu.roll.toFixed(1)}°`);
+       const com = robot.getCoM();
+       robot.log(`CoM Stable: ${com.isStable}, Margin: ${(com.stabilityMargin * 1000).toFixed(1)}mm`);
+       const torques = robot.getJointTorques();
+       robot.log(`R_Knee_Pitch Torque: ${torques.R_Knee_Pitch.toFixed(3)} N·m`);
      }
-     customWave();
+     stabilizeGait();
      ```
-   * Click **RUN SCRIPT** to execute in the physics engine.
 
 ---
 
