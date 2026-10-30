@@ -24,6 +24,15 @@ Built with React 18, Three.js / React Three Fiber, Monaco Editor, and Web Speech
 ## 🌟 Key Capabilities
 
 - **17-DOF Real-Time Kinematics & Physics Engine**: Forward kinematics calculation for all 17 servo joints (10 leg joints, 6 arm joints, 1 head yaw joint) with real-world dimensions (420–450 mm height, 280 mm width, 1.2–1.5 kg estimated mass).
+- **Interactive Circuit & Wiring Editor (Digital Hardware Workbench)**:
+  - **Full-Screen Hardware Schematic View**: Switch instantly between **3D SIMULATOR** and **CIRCUIT EDITOR** via the top navigation bar.
+  - **Photorealistic Module Rendering**: SVG-rendered hardware modules matching physical components (ESP32 DevKit V1, Dual PCA9685 PWM drivers, SSD1306 0.96" OLED, MAX98357A I2S DAC, PAM8403 amplifier, HC-SR04 ultrasonic sensor, 2S 7.4V Li-ion pack, 6V 5A UBEC, 5V 3A Buck converter, dynamic speaker, and status LED).
+  - **Interactive Wiring & Pin Routing**: Click pins to make new connections or disconnect wires with instant bezier-routed paths.
+  - **Signal-Type Color Coding**: Distinct color coding for Power (Red), Ground (Dark Grey), I²C (Blue), I²S (Green), GPIO (Orange), and PWM (Violet) with animated signal flow indicators.
+  - **C++/Arduino Code Inspection**: Click any wire connection to inspect the exact Arduino/ESP32 C++ firmware snippet and library call governing that signal.
+  - **Module Specifications & Pinout Inspector**: Select any module to view operating voltages, current ratings, communication protocols, and register addresses.
+  - **Session History & Undo**: Real-time event log tracking all wiring modifications with one-click reset to factory wiring.
+  - **Live OLED Expression & Servo Monitor**: Test all 8 facial expressions and observe 17-channel PCA9685 servo angle telemetry updating in real time.
 - **Interactive Semi-Transparent Chassis**: Inspect internal packaging—ESP32 DevKit, dual PCA9685 PWM drivers, 2S Li-ion battery pack, buck converters, I2S amplifier, speaker, and structural harnesses.
 - **Virtual Smartphone Remote (BLE Emulation)**:
   - **Live Voice Recognition**: Uses the Web Speech API (`webkitSpeechRecognition`) to process natural speech commands directly in the browser.
@@ -190,13 +199,14 @@ simuforge-studio/
 ├── src/
 │   ├── components/
 │   │   ├── CameraControlHUD.tsx       # Orbit, top, chase, side, FPV camera presets
+│   │   ├── CircuitEditorPanel.tsx     # Interactive SVG hardware workbench, editable wiring & code
 │   │   ├── CodeSpaceIDE.tsx           # Monaco code editor with ESP32 sandboxed runtime
 │   │   ├── HardwareInspectorPanel.tsx # 6-tab modal for diagnostic telemetry
 │   │   ├── HumanoidModel.tsx          # 17-DOF articulated 3D mesh with semi-transparent torso
 │   │   ├── PhoneRemoteHUD.tsx         # Virtual mobile remote with Web Speech & D-pad
 │   │   ├── SceneTreePanel.tsx         # Webots-style hierarchical scene & servo inspector
 │   │   ├── SignalAnalyzerPanel.tsx    # RF link propagation & oscilloscope panel
-│   │   ├── TopControlBar.tsx          # Simulation transport, speed, and status bar
+│   │   ├── TopControlBar.tsx          # Transport, view switcher (3D Simulator / Circuit Editor), status
 │   │   └── Viewport3D.tsx             # Three.js Canvas, shadow maps, lighting, arena
 │   ├── engine/
 │   │   ├── HumanoidKinematics.ts      # 17-DOF forward kinematics & gait animator
@@ -218,15 +228,22 @@ simuforge-studio/
 
 ## 🛠️ Usage Guide
 
-1. **Walking & Turning**:
+1. **Switching to Circuit Editor**:
+   * Click **CIRCUIT EDITOR** in the top navigation bar to toggle from the 3D simulator to the hardware wiring schematic view.
+   * **Inspect Hardware**: Click on any module (e.g., ESP32, PCA9685, MAX98357A) to display its full electrical specs and pin assignments in the inspector drawer.
+   * **Inspect Wiring Code**: Click on any wire connection to see the matching Arduino/C++ code snippet used in firmware.
+   * **Edit Connections**: Click a pin to start a wire connection, then click the target pin to connect. Click existing wires or disconnect buttons to remove connections.
+   * **OLED & Servo Channels**: Preview facial expressions on the live SSD1306 panel and monitor real-time servo channel pulse angles.
+   * Click **3D SIMULATOR** at any time to return to the interactive 3D robot scene.
+2. **Walking & Turning**:
    * Open the **Phone Remote** (bottom-right button) $\rightarrow$ select the **🕹️ LOCOMOTION** tab $\rightarrow$ tap the Arrow buttons to command forward/backward walking and left/right turns.
    * Alternatively, select *Move Forward* or *Turn Left* from the top **Voice Cmd** dropdown.
-2. **Natural Voice Control**:
+3. **Natural Voice Control**:
    * Open the Phone Remote $\rightarrow$ tap **🎤 TAP TO SPEAK** $\rightarrow$ say commands like *"Say Hi"*, *"Move Forward"*, *"Turn Left"*, *"Dance"*, or *"Sit Down"*.
-3. **Inspecting Internal Electronics**:
+4. **Inspecting Internal Electronics**:
    * Orbit the camera around the robot or zoom into the chest. The outer aluminum shell is rendered semi-transparent (35% opacity), revealing the green ESP32 board, dual blue PCA9685 boards, Li-ion battery, BECs, and color-coded bus wiring.
    * Click the **🔧 HARDWARE INSPECTOR** button (bottom-left) to view live component specifications, servo stress gauges, battery telemetry, OLED expressions, and ultrasonic obstacle radar.
-4. **Writing Custom Scripts**:
+5. **Writing Custom Scripts**:
    * Expand the **Controller Code Space** at the bottom of the screen. Select a template or write custom asynchronous JavaScript using the exposed `robot` object:
      ```javascript
      async function customWave() {

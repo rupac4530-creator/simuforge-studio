@@ -1,6 +1,8 @@
 import React from 'react';
 import { SimState, VoiceCommand, VOICE_COMMANDS } from '../types/simulation';
-import { Play, Pause, SkipForward, RotateCcw, Activity, Wifi, Bot, Layers } from 'lucide-react';
+import { Play, Pause, SkipForward, RotateCcw, Wifi, Bot, Layers, Cable, Box } from 'lucide-react';
+
+type ViewMode = 'simulator' | 'circuit';
 
 interface TopControlBarProps {
   simState: SimState;
@@ -14,6 +16,8 @@ interface TopControlBarProps {
   onReset: () => void;
   onSpeedChange: (speed: number) => void;
   onVoiceCommand: (cmd: VoiceCommand) => void;
+  viewMode: ViewMode;
+  onViewModeChange: (mode: ViewMode) => void;
 }
 
 export const TopControlBar: React.FC<TopControlBarProps> = ({
@@ -28,8 +32,9 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
   onReset,
   onSpeedChange,
   onVoiceCommand,
+  viewMode,
+  onViewModeChange,
 }) => {
-  // Format simulation time mm:ss.ms
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -45,13 +50,40 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
 
   return (
     <header className="h-12 w-full bg-[#111827] border-b border-[#1e293b] px-4 flex items-center justify-between select-none z-30 shrink-0">
-      {/* Left: Branding & Tag */}
+      {/* Left: Branding + View Switcher */}
       <div className="flex items-center space-x-3">
         <div className="flex items-center space-x-2 text-blue-400 font-bold tracking-wider text-sm bg-blue-950/40 px-2.5 py-1 rounded-md border border-blue-800/40">
           <Bot className="w-4 h-4 text-cyan-400" />
           <span className="text-white">SIMU<span className="text-blue-400">FORGE</span></span>
           <span className="text-xs px-1.5 py-0.2 bg-blue-500/20 text-cyan-300 rounded font-mono">STUDIO</span>
         </div>
+
+        {/* View Mode Switcher */}
+        <div className="flex items-center bg-[#0a0e17] rounded-lg p-0.5 border border-[#1e293b]">
+          <button
+            onClick={() => onViewModeChange('simulator')}
+            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
+              viewMode === 'simulator'
+                ? 'bg-blue-600/30 text-blue-300 border border-blue-500/40'
+                : 'text-slate-500 hover:text-slate-300'
+            }`}
+          >
+            <Box className="w-3 h-3" />
+            <span>3D SIMULATOR</span>
+          </button>
+          <button
+            onClick={() => onViewModeChange('circuit')}
+            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
+              viewMode === 'circuit'
+                ? 'bg-violet-600/30 text-violet-300 border border-violet-500/40'
+                : 'text-slate-500 hover:text-slate-300'
+            }`}
+          >
+            <Cable className="w-3 h-3" />
+            <span>CIRCUIT EDITOR</span>
+          </button>
+        </div>
+
         <div className="hidden md:flex items-center space-x-1.5 text-xs text-slate-400 bg-[#0f172a] px-2 py-1 rounded border border-slate-800">
           <Layers className="w-3.5 h-3.5 text-slate-500" />
           <span>Hash V3 Humanoid (17-DOF)</span>
@@ -127,7 +159,7 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
         </div>
       </div>
 
-      {/* Right: Predefined Voice Command & RF Signal Badge */}
+      {/* Right: Voice Command & RF Badge */}
       <div className="flex items-center space-x-3">
         {/* Voice Command Quick Trigger */}
         <div className="flex items-center space-x-1.5 bg-[#0a0e17] px-2 py-1 rounded-md border border-[#1e293b]">

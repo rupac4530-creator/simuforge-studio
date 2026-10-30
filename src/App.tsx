@@ -21,6 +21,7 @@ import SignalAnalyzerPanel from './components/SignalAnalyzerPanel';
 import CodeSpaceIDE from './components/CodeSpaceIDE';
 import PhoneRemoteHUD from './components/PhoneRemoteHUD';
 import HardwareInspectorPanel from './components/HardwareInspectorPanel';
+import CircuitEditorPanel from './components/CircuitEditorPanel';
 
 // Arena Obstacles for RF attenuation calculation
 const ARENA_OBSTACLES = [
@@ -107,6 +108,9 @@ export const App: React.FC = () => {
 
   // Last voice command for code editor sync
   const [lastVoiceCommand, setLastVoiceCommand] = useState<string>('');
+
+  // View Mode: simulator vs circuit editor
+  const [viewMode, setViewMode] = useState<'simulator' | 'circuit'>('simulator');
 
   // Log Helper
   const addLog = useCallback((msg: string) => {
@@ -380,81 +384,96 @@ export const App: React.FC = () => {
         }}
         onSpeedChange={setSimSpeed}
         onVoiceCommand={handleVoiceCommand}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
       />
 
-      {/* 2. MAIN 3-PANE WORKSPACE */}
-      <div className="flex-1 flex overflow-hidden relative">
-        {/* LEFT: Webots Scene Hierarchy */}
-        <SceneTreePanel
+      {/* 2. MAIN CONTENT — switches between Simulator and Circuit Editor */}
+      {viewMode === 'simulator' ? (
+        <>
+          {/* SIMULATOR: 3-PANE WORKSPACE */}
+          <div className="flex-1 flex overflow-hidden relative">
+            {/* LEFT: Webots Scene Hierarchy */}
+            <SceneTreePanel
+              servos={servos}
+              onServoAngleChange={handleServoAngleChange}
+              selectedNode={selectedNode}
+              onSelectNode={setSelectedNode}
+            />
+
+            {/* CENTER: 3D Multi-Camera Viewport */}
+            <div className="flex-1 relative flex flex-col bg-[#0a0e17] overflow-hidden">
+              <Viewport3D
+                servoAngles={Object.fromEntries(
+                  Object.entries(servos).map(([k, v]) => [k, v.angle])
+                ) as Record<ServoName, number>}
+                config={config}
+                cameraPreset={cameraPreset}
+                cameraHeight={cameraHeight}
+                cameraPitch={cameraPitch}
+                cameraYaw={cameraYaw}
+                cameraFov={cameraFov}
+                baseStationPos={baseStationPos}
+                robotPosition={robotPosition}
+                robotYaw={robotYaw}
+              />
+
+              {/* Floating Camera Control HUD */}
+              <CameraControlHUD
+                preset={cameraPreset}
+                height={cameraHeight}
+                pitch={cameraPitch}
+                yaw={cameraYaw}
+                fov={cameraFov}
+                onPresetChange={setCameraPreset}
+                onHeightChange={setCameraHeight}
+                onPitchChange={setCameraPitch}
+                onYawChange={setCameraYaw}
+                onFovChange={setCameraFov}
+                showColliders={config.showColliders}
+                showCoM={config.showCoM}
+                showForces={config.showForces}
+                showLidarRays={config.showLidarRays}
+                showRFHeatmap={config.showRFHeatmap}
+                showGrid={config.showGrid}
+                onToggle={handleHudToggle}
+              />
+            </div>
+
+            {/* RIGHT: Signal Propagation & RF Analyzer */}
+            <SignalAnalyzerPanel
+              rfState={rfState}
+              rfConfig={rfConfig}
+              rssiHistory={rssiHistory}
+              onBandChange={handleBandChange}
+              onTxPowerChange={handleTxPowerChange}
+              onPathLossChange={handlePathLossChange}
+              onTxGainChange={handleTxGainChange}
+              onRxGainChange={handleRxGainChange}
+              onNoiseFigureChange={handleNoiseFigureChange}
+            />
+          </div>
+
+          {/* BOTTOM: Controller Code Space & Serial Console */}
+          <CodeSpaceIDE
+            onExecuteCommand={handleVoiceCommand}
+            logs={logs}
+            isRunning={isCodeRunning}
+            onRunCode={runCode}
+            onStopCode={stopCode}
+            onClearLogs={() => setLogs([])}
+            lastVoiceCommand={lastVoiceCommand}
+          />
+        </>
+      ) : (
+        /* CIRCUIT EDITOR: Full-screen interactive schematic */
+        <CircuitEditorPanel
           servos={servos}
-          onServoAngleChange={handleServoAngleChange}
-          selectedNode={selectedNode}
-          onSelectNode={setSelectedNode}
+          batteryVoltage={hwBatteryVoltage}
+          simTime={simTime}
+          isVisible={viewMode === 'circuit'}
         />
-
-        {/* CENTER: 3D Multi-Camera Viewport */}
-        <div className="flex-1 relative flex flex-col bg-[#0a0e17] overflow-hidden">
-          <Viewport3D
-            servoAngles={Object.fromEntries(
-              Object.entries(servos).map(([k, v]) => [k, v.angle])
-            ) as Record<ServoName, number>}
-            config={config}
-            cameraPreset={cameraPreset}
-            cameraHeight={cameraHeight}
-            cameraPitch={cameraPitch}
-            cameraYaw={cameraYaw}
-            cameraFov={cameraFov}
-            baseStationPos={baseStationPos}
-            robotPosition={robotPosition}
-            robotYaw={robotYaw}
-          />
-
-          {/* Floating Camera Control HUD */}
-          <CameraControlHUD
-            preset={cameraPreset}
-            height={cameraHeight}
-            pitch={cameraPitch}
-            yaw={cameraYaw}
-            fov={cameraFov}
-            onPresetChange={setCameraPreset}
-            onHeightChange={setCameraHeight}
-            onPitchChange={setCameraPitch}
-            onYawChange={setCameraYaw}
-            onFovChange={setCameraFov}
-            showColliders={config.showColliders}
-            showCoM={config.showCoM}
-            showForces={config.showForces}
-            showLidarRays={config.showLidarRays}
-            showRFHeatmap={config.showRFHeatmap}
-            showGrid={config.showGrid}
-            onToggle={handleHudToggle}
-          />
-        </div>
-
-        {/* RIGHT: Signal Propagation & RF Analyzer */}
-        <SignalAnalyzerPanel
-          rfState={rfState}
-          rfConfig={rfConfig}
-          rssiHistory={rssiHistory}
-          onBandChange={handleBandChange}
-          onTxPowerChange={handleTxPowerChange}
-          onPathLossChange={handlePathLossChange}
-          onTxGainChange={handleTxGainChange}
-          onRxGainChange={handleRxGainChange}
-          onNoiseFigureChange={handleNoiseFigureChange}
-        />
-      </div>
-
-      {/* 3. BOTTOM: Controller Code Space & Serial Console */}
-      <CodeSpaceIDE
-        onExecuteCommand={handleVoiceCommand}
-        logs={logs}
-        isRunning={isCodeRunning}
-        onRunCode={runCode}
-        onStopCode={stopCode}
-        onClearLogs={() => setLogs([])}
-        lastVoiceCommand={lastVoiceCommand}
-      />
+      )}
 
       {/* 4. HARDWARE INSPECTOR PANEL (modal overlay) */}
       <HardwareInspectorPanel
