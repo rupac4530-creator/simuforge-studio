@@ -158,6 +158,23 @@ $$C_{\text{thermal}} \frac{dT_{\text{core}}}{dt} = P_{\text{heat}} - \dot{m} c_p
 
 ---
 
+## 📸 High-Resolution System Photo Gallery (10 Architectural Features)
+
+| # | System Architecture & Viewport | Preview |
+| :---: | :--- | :---: |
+| **01** | **180 cm Biomimetic Humanoid Twin (Full Clone)**<br>Full anatomical 1.8 m humanoid with Subsurface Scattering silicone dermis, instanced eyebrows/eyelashes, 4-layer HUD, and synthetic PiP ocular camera. | <img src="docs/diagrams/screenshots/01_biomimetic_humanoid_180cm_full.png" width="480" alt="01 Full Twin" /> |
+| **02** | **Anatomical X-Ray Dissection Mode**<br>Skin peeled to 15% opacity revealing the internal CNC 7075-T6 aluminum skeleton, articulated 24-vertebrae spine, and deionized liquid cooling loops (cyan supply, red return). | <img src="docs/diagrams/screenshots/02_anatomical_xray_dissection.png" width="480" alt="02 X-Ray Dissection" /> |
+| **03** | **Musculoskeletal Hydro-Muscles & Tendon Rig**<br>Skin hidden to isolate the 32 cranial Bowden micro-cables, upper-body McKibben hydro-muscles, and lower-body Quasi-Direct Drive (QDD) planetary actuators. | <img src="docs/diagrams/screenshots/03_musculoskeletal_and_spine_vascularity.png" width="480" alt="03 Musculoskeletal" /> |
+| **04** | **Bionic Core: 24 mm Eyeballs, Orin AI Brain & 16S Pack**<br>Deep internal chassis inspection showing the dual 24 mm hollow eyeball assemblies, thoracic NVIDIA Jetson Orin/Thor compute stack, and pelvic 16S Li-ion battery pack. | <img src="docs/diagrams/screenshots/04_bionic_core_and_internal_compute.png" width="480" alt="04 Bionic Core" /> |
+| **05** | **FACS Facial Expression Studio**<br>Facial Action Coding System modal with 32 Action Unit sliders (AU1–AU26), real-time dermal strain gauge, and Audio2Face phoneme lip-sync engine. | <img src="docs/diagrams/screenshots/05_facs_facial_expression_studio.png" width="480" alt="05 FACS Studio" /> |
+| **06** | **Audio2Face Smile & Dynamic Lip-Sync**<br>Duchenne smile preset ($AU12=0.95$) combined with phoneme "A" ($AU25=0.8, AU26=0.6$), showing organic mouth opening, skin wrinkling, and live cable tension telemetry. | <img src="docs/diagrams/screenshots/06_audio2face_smile_and_lipsync.png" width="480" alt="06 Audio2Face" /> |
+| **07** | **Robot Eye View (PiP) Synthetic Sensor Viewport**<br>Floating view looking out through the 24 mm Nitinol iris pupil. Simulates optical exposure gain, depth-of-field blur, rolling vs global shutter skew, and depth point clouds. | <img src="docs/diagrams/screenshots/07_robot_eye_pip_sensor_view.png" width="480" alt="07 Robot Eye PiP" /> |
+| **08** | **Cranial Micro-Zoom & 24 mm Bionic Eyeball Mechanics**<br>Sub-millimeter camera zoom with `logarithmicDepthBuffer: true` (0.5 mm near plane) showcasing the cornea dome, 6-blade Nitinol iris, gold lens barrel, and 8×8 mm MIPI PCB. | <img src="docs/diagrams/screenshots/08_bionic_eyeball_24mm_micro_zoom.png" width="480" alt="08 Eyeball Zoom" /> |
+| **09** | **MuJoCo / Drake Quality Dynamics Analyzer Panel**<br>Multi-physics dynamics panel with circular stability margin gauge, 2D Graham-scan support polygon ($XZ$), 3D CoM/ZMP trajectories, and 6-DOF IMU specific force telemetry. | <img src="docs/diagrams/screenshots/09_dynamics_analyzer_stability_telemetry.png" width="480" alt="09 Dynamics Analyzer" /> |
+| **10** | **Photorealistic Interactive Circuit & Wiring Workbench**<br>Interactive schematic workbench with ESP32 DevKit, dual PCA9685 drivers, OLED monitor, I2C/I2S buses, power distribution UBEC, and C++ firmware code inspector. | <img src="docs/diagrams/screenshots/10_interactive_circuit_schematic_workbench.png" width="480" alt="10 Circuit Workbench" /> |
+
+---
+
 ## 🚀 Quickstart & Local Development
 
 ### Prerequisites
