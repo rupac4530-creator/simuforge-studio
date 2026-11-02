@@ -1,10 +1,10 @@
 // ============================================================
 // SimuForge Studio — 180 cm Biomimetic Humanoid 3D Model
-// 4-Layer Concentric Anatomical Architecture & 24 mm Bionic Eyeballs
-// Layer 1: Silicone Dermis, Hair, Taxels
-// Layer 2: 32-DoF FACS Bowden Cables, McKibben Hydro-Muscles, QDDs
-// Layer 3: 7075-T6 Skeleton, 24-Vertebrae Spine, Coolant Capillaries
-// Layer 4: 24 mm Dual Eyeballs, 6-Blade Iris, 8x8mm Camera PCB, Orin Brain, 16S Pack
+// High-Polygon Multi-Scale Anatomical Digital Twin Architecture
+// Layer 1: SSS Translucent Silicone Dermis, Hair, Taxels
+// Layer 2: 32-DoF FACS Bowden Cables, McKibben Hydro-Muscles, QDDs, 24-DoF Hands
+// Layer 3: CNC 7075-T6 Skeleton, 24-Vertebrae Spine, Deionized Coolant Loop
+// Layer 4: 24 mm Dual Eyeballs, 6-Blade Nitinol Iris, 8x8mm Camera PCB, Orin Brain, 16S Pack
 // ============================================================
 
 import React, { useRef, useMemo } from 'react';
@@ -25,6 +25,8 @@ interface BiomimeticHumanoidModelProps {
   onSelectPart?: (part: Selectable3DPart) => void;
   position?: [number, number, number];
   robotYaw?: number;
+  eyeballShellOpacity?: number;
+  gazeTargetPos?: [number, number, number] | null;
 }
 
 export const BiomimeticHumanoidModel: React.FC<BiomimeticHumanoidModelProps> = ({
@@ -36,19 +38,29 @@ export const BiomimeticHumanoidModel: React.FC<BiomimeticHumanoidModelProps> = (
   onSelectPart,
   position = [0, 0, 0],
   robotYaw = 0,
+  eyeballShellOpacity = 0.95,
+  gazeTargetPos = null,
 }) => {
   const rootRef = useRef<THREE.Group>(null);
-  const leftEyeRef = useRef<THREE.Group>(null);
-  const rightEyeRef = useRef<THREE.Group>(null);
-  const leftIrisRef = useRef<THREE.Group>(null);
-  const rightIrisRef = useRef<THREE.Group>(null);
+  const leftEyeGimbalRef = useRef<THREE.Group>(null);
+  const rightEyeGimbalRef = useRef<THREE.Group>(null);
+  const leftIrisGroupRef = useRef<THREE.Group>(null);
+  const rightIrisGroupRef = useRef<THREE.Group>(null);
   const jawRef = useRef<THREE.Group>(null);
+  const mouthLipRef = useRef<THREE.Group>(null);
+  const leftCheekRef = useRef<THREE.Mesh>(null);
+  const rightCheekRef = useRef<THREE.Mesh>(null);
+  const leftBrowRef = useRef<THREE.Mesh>(null);
+  const rightBrowRef = useRef<THREE.Mesh>(null);
+  const bicepLeftRef = useRef<THREE.Mesh>(null);
+  const bicepRightRef = useRef<THREE.Mesh>(null);
 
-  const activeSilicone = SILICONE_REGISTRY[siliconeId] || SILICONE_REGISTRY.ecoflex_0010;
+  const activeSilicone = SILICONE_REGISTRY[siliconeId] || SILICONE_REGISTRY.ecoflex_0020;
   const activeCamera = CAMERA_REGISTRY[optics.selectedCameraId] || CAMERA_REGISTRY.imx219;
 
-  // 180 cm anatomical height proportions (in meters)
+  // Exact 1.80 m anthropomorphic proportions (in meters)
   const H = {
+    total: 1.80,
     head: 0.24,
     neck: 0.10,
     torso: 0.52,
@@ -58,266 +70,396 @@ export const BiomimeticHumanoidModel: React.FC<BiomimeticHumanoidModelProps> = (
     footH: 0.08,
     footL: 0.26,
     footW: 0.10,
-    shoulderWidth: 0.44,
-    armL: 0.32,
+    shoulderW: 0.46,
+    upperArmL: 0.32,
     forearmL: 0.28,
-    handL: 0.18,
+    handL: 0.19,
   };
 
-  const standingCenterY = H.footH + H.shin + H.thigh + H.pelvis + H.torso * 0.5;
+  // Center elevations
+  const ankleY = H.footH;
+  const kneeY = ankleY + H.shin;
+  const hipY = kneeY + H.thigh;
+  const pelvisCenterY = hipY + H.pelvis * 0.5;
+  const torsoBaseY = hipY + H.pelvis;
+  const chestCenterY = torsoBaseY + H.torso * 0.5;
+  const neckBaseY = torsoBaseY + H.torso;
+  const headCenterY = neckBaseY + H.neck + H.head * 0.48; // ~1.68m eye height
 
-  // Dynamic eye tracking and vergence computation
-  useFrame(() => {
-    // Left & Right vergence yaw: crossing inward when tracking near targets
-    const vergenceInwardYawRad = (optics.leftEyeYawDeg * Math.PI) / 180;
-    const pitchRad = (optics.coupledPitchDeg * Math.PI) / 180;
+  // Real-time animation loop
+  useFrame(({ clock }) => {
+    const t = clock.getElapsedTime();
 
-    if (leftEyeRef.current) {
-      leftEyeRef.current.rotation.y = vergenceInwardYawRad; // Inward to right
-      leftEyeRef.current.rotation.x = pitchRad;
+    // 1. Dual-Eye Gaze Tracking & Vergence Solver
+    let leftYaw = (optics.leftEyeYawDeg * Math.PI) / 180;
+    let rightYaw = -(optics.rightEyeYawDeg * Math.PI) / 180;
+    let pitch = (optics.coupledPitchDeg * Math.PI) / 180;
+
+    // If a 3D gaze target sphere exists in the scene, dynamically compute binocular vergence
+    if (gazeTargetPos) {
+      const eyeLWorld = new THREE.Vector3(-0.032, headCenterY, 0.095);
+      const eyeRWorld = new THREE.Vector3(0.032, headCenterY, 0.095);
+      const targetVec = new THREE.Vector3(...gazeTargetPos);
+
+      const toTargetL = targetVec.clone().sub(eyeLWorld).normalize();
+      const toTargetR = targetVec.clone().sub(eyeRWorld).normalize();
+
+      leftYaw = Math.atan2(toTargetL.x, toTargetL.z);
+      rightYaw = Math.atan2(toTargetR.x, toTargetR.z);
+      pitch = -Math.asin(Math.max(-1, Math.min(1, toTargetL.y)));
     }
-    if (rightEyeRef.current) {
-      rightEyeRef.current.rotation.y = -vergenceInwardYawRad; // Inward to left
-      rightEyeRef.current.rotation.x = pitchRad;
+
+    if (leftEyeGimbalRef.current) {
+      leftEyeGimbalRef.current.rotation.y = leftYaw;
+      leftEyeGimbalRef.current.rotation.x = pitch;
+    }
+    if (rightEyeGimbalRef.current) {
+      rightEyeGimbalRef.current.rotation.y = rightYaw;
+      rightEyeGimbalRef.current.rotation.x = pitch;
     }
 
-    // Nitinol Iris 6-blade aperture scaling (2.0 mm to 7.0 mm diameter)
-    const irisScale = Math.max(0.4, Math.min(1.4, optics.pupilApertureMm / 5.0));
-    if (leftIrisRef.current) leftIrisRef.current.scale.set(irisScale, irisScale, 1.0);
-    if (rightIrisRef.current) rightIrisRef.current.scale.set(irisScale, irisScale, 1.0);
+    // 2. Nitinol SMA 6-Blade Iris Dilation (2.0 mm to 7.0 mm diameter)
+    // Scale factor: 2.0mm = 0.5x aperture hole, 7.0mm = 1.75x hole
+    const irisDilation = Math.max(0.4, Math.min(1.75, optics.pupilApertureMm / 4.0));
+    if (leftIrisGroupRef.current) {
+      leftIrisGroupRef.current.scale.set(irisDilation, irisDilation, 1.0);
+    }
+    if (rightIrisGroupRef.current) {
+      rightIrisGroupRef.current.scale.set(irisDilation, irisDilation, 1.0);
+    }
 
-    // Jaw TMJ 4-bar linkage drop driven by FACS AU26
+    // 3. FACS Action Unit Facial Morphing
+    // AU26 (Jaw drop) + 4-bar TMJ mandible translation
     if (jawRef.current) {
-      jawRef.current.rotation.x = facs.au26_jawDrop * 0.28; // up to ~16 degrees drop
+      jawRef.current.rotation.x = facs.au26_jawDrop * 0.32; // up to ~18° drop
+      jawRef.current.position.z = 0.025 + facs.au26_jawDrop * 0.008; // TMJ forward slide
+    }
+
+    // AU12 (Smile / Zygomaticus Major): lifts cheeks and stretches mouth corners
+    const smileAmount = facs.au12_lipCornerPuller;
+    if (leftCheekRef.current) {
+      leftCheekRef.current.position.y = 0.02 + smileAmount * 0.012 + facs.au6_cheekRaiser * 0.008;
+      leftCheekRef.current.scale.set(1 + smileAmount * 0.25, 1 + smileAmount * 0.2, 1);
+    }
+    if (rightCheekRef.current) {
+      rightCheekRef.current.position.y = 0.02 + smileAmount * 0.012 + facs.au6_cheekRaiser * 0.008;
+      rightCheekRef.current.scale.set(1 + smileAmount * 0.25, 1 + smileAmount * 0.2, 1);
+    }
+
+    // AU1 & AU2 (Brows raiser) and AU4 (Brow lowerer)
+    const browRaise = (facs.au1_innerBrowRaiser * 0.6 + facs.au2_outerBrowRaiser * 0.4) * 0.015 - facs.au4_browLowerer * 0.01;
+    if (leftBrowRef.current) {
+      leftBrowRef.current.position.y = 0.065 + browRaise;
+    }
+    if (rightBrowRef.current) {
+      rightBrowRef.current.position.y = 0.065 + browRaise;
+    }
+
+    // Lips Part (AU25) & Lip Stretcher (AU20)
+    if (mouthLipRef.current) {
+      mouthLipRef.current.scale.x = 1.0 + facs.au20_lipStretcher * 0.35 + smileAmount * 0.3;
+      mouthLipRef.current.scale.y = 1.0 + facs.au25_lipsPart * 0.6;
+    }
+
+    // 4. McKibben Hydro-Muscle Radial Bulging
+    if (bicepLeftRef.current) {
+      const pulse = 1.0 + Math.sin(t * 1.5) * 0.08;
+      bicepLeftRef.current.scale.set(pulse, 1.0, pulse);
+    }
+    if (bicepRightRef.current) {
+      const pulse = 1.0 + Math.cos(t * 1.5) * 0.08;
+      bicepRightRef.current.scale.set(pulse, 1.0, pulse);
     }
   });
 
   // ============================================================
-  // PBR MATERIALS WITH LAYER OPACITY
+  // PBR MATERIALS MATRIX
   // ============================================================
   const mats = useMemo(() => {
     const isXray = layers.xrayMode;
-    const skinAlpha = isXray ? Math.min(layers.integumentary, 0.25) : layers.integumentary;
+    const skinAlpha = isXray ? Math.min(layers.integumentary, 0.22) : layers.integumentary;
+    const scleraAlpha = Math.min(layers.electronics, eyeballShellOpacity);
 
     // Skin tint based on selected silicone formulation
     const skinColor =
-      siliconeId === 'frubber' ? '#e2d3c2' :
-      siliconeId === 'dragonskin_10' ? '#c7c2bc' :
-      siliconeId === 'ecoflex_0020' ? '#f0ded0' : '#f5e4d5';
+      siliconeId === 'frubber' ? '#eedecf' :
+      siliconeId === 'dragonskin_10' ? '#cfc9c2' :
+      siliconeId === 'ecoflex_0010' ? '#fbeae0' : '#f5e4d5';
+
+    // Camera PCB tint based on active sensor model
+    const camColors: Record<string, { pcb: string; emissive: string }> = {
+      imx219: { pcb: '#15803d', emissive: '#16a34a' }, // Classic Green FR4
+      ov9281: { pcb: '#18181b', emissive: '#eab308' }, // Matte Black Global Shutter
+      ov5640: { pcb: '#1d4ed8', emissive: '#38bdf8' }, // Royal Blue Auto-Focus
+      prophesee_event: { pcb: '#581c87', emissive: '#c084fc' }, // Violet Neuromorphic
+    };
+    const activeCamColor = camColors[optics.selectedCameraId] || camColors.imx219;
 
     return {
-      // Layer 1: Skin
+      // Layer 1: Integumentary (Living Humanoid Skin with SSS)
       skin: new THREE.MeshStandardMaterial({
         color: skinColor,
-        roughness: 0.55,
-        metalness: 0.05,
+        roughness: 0.52,
+        metalness: 0.04,
         transparent: skinAlpha < 0.98,
         opacity: skinAlpha,
-        depthWrite: skinAlpha > 0.4,
+        depthWrite: skinAlpha > 0.35,
         side: THREE.DoubleSide,
       }),
       hair: new THREE.MeshStandardMaterial({
         color: '#1a1815',
-        roughness: 0.8,
-        metalness: 0.1,
+        roughness: 0.85,
+        metalness: 0.08,
         transparent: skinAlpha < 0.98,
         opacity: skinAlpha,
       }),
-      // Layer 2: Musculoskeletal
-      muscle: new THREE.MeshStandardMaterial({
-        color: '#991b1b',
-        roughness: 0.45,
-        metalness: 0.2,
+      taxelGlow: new THREE.MeshStandardMaterial({
+        color: '#38bdf8',
+        emissive: '#0284c7',
+        emissiveIntensity: layers.showTaxels ? 1.5 : 0.0,
+        transparent: true,
+        opacity: layers.showTaxels ? 0.75 : 0.0,
+      }),
+      // Layer 2: Musculoskeletal (Bowden Rig & McKibben Hydro-Muscles)
+      muscleBraided: new THREE.MeshStandardMaterial({
+        color: '#991b1b', // Festo braided synthetic muscle
+        roughness: 0.42,
+        metalness: 0.25,
         transparent: layers.musculoskeletal < 0.98,
         opacity: layers.musculoskeletal,
       }),
-      tendonCable: new THREE.MeshStandardMaterial({
-        color: '#cbd5e1',
-        roughness: 0.3,
-        metalness: 0.85,
+      bowdenSheath: new THREE.MeshStandardMaterial({
+        color: '#e2e8f0', // PTFE low-friction sheathing
+        roughness: 0.25,
+        metalness: 0.7,
         transparent: layers.musculoskeletal < 0.98,
         opacity: layers.musculoskeletal,
       }),
-      qddMotor: new THREE.MeshStandardMaterial({
+      anchorPinCyan: new THREE.MeshStandardMaterial({
+        color: '#06b6d4',
+        emissive: '#0891b2',
+        emissiveIntensity: 1.2,
+      }),
+      qddBrushless: new THREE.MeshStandardMaterial({
         color: '#1e293b',
         roughness: 0.35,
-        metalness: 0.8,
+        metalness: 0.85,
         transparent: layers.musculoskeletal < 0.98,
         opacity: layers.musculoskeletal,
       }),
-      // Layer 3: Endoskeleton
-      bone: new THREE.MeshStandardMaterial({
-        color: '#334155', // Anodized 7075-T6 CNC aluminum
+      copperStator: new THREE.MeshStandardMaterial({
+        color: '#b45309',
         roughness: 0.3,
-        metalness: 0.85,
+        metalness: 0.9,
+      }),
+      // Layer 3: Endoskeleton & Thermal Capillaries
+      aluminum7075: new THREE.MeshStandardMaterial({
+        color: '#334155', // Hard-anodized CNC 7075-T6 aluminum
+        roughness: 0.28,
+        metalness: 0.88,
         transparent: layers.endoskeletal < 0.98,
         opacity: layers.endoskeletal,
       }),
-      carbonFrame: new THREE.MeshStandardMaterial({
-        color: '#0f172a',
-        roughness: 0.5,
+      vertebraeDisc: new THREE.MeshStandardMaterial({
+        color: '#475569',
+        roughness: 0.4,
+        metalness: 0.7,
+        transparent: layers.endoskeletal < 0.98,
+        opacity: layers.endoskeletal,
+      }),
+      coolantBlueSupply: new THREE.MeshStandardMaterial({
+        color: '#06b6d4',
+        emissive: '#0891b2',
+        emissiveIntensity: layers.showThermalLoop ? 1.6 : 0.3,
+        roughness: 0.15,
         metalness: 0.5,
         transparent: layers.endoskeletal < 0.98,
         opacity: layers.endoskeletal,
       }),
-      coolantBlue: new THREE.MeshStandardMaterial({
-        color: '#06b6d4',
-        emissive: '#0891b2',
-        emissiveIntensity: layers.showThermalLoop ? 1.2 : 0.2,
-        roughness: 0.2,
-        metalness: 0.6,
-        transparent: layers.endoskeletal < 0.98,
-        opacity: layers.endoskeletal,
-      }),
-      coolantRed: new THREE.MeshStandardMaterial({
+      coolantRedReturn: new THREE.MeshStandardMaterial({
         color: '#ef4444',
         emissive: '#dc2626',
-        emissiveIntensity: layers.showThermalLoop ? 1.2 : 0.2,
-        roughness: 0.2,
-        metalness: 0.6,
+        emissiveIntensity: layers.showThermalLoop ? 1.6 : 0.3,
+        roughness: 0.15,
+        metalness: 0.5,
         transparent: layers.endoskeletal < 0.98,
         opacity: layers.endoskeletal,
       }),
-      // Layer 4: Electronics & Eyeballs
-      sclera: new THREE.MeshStandardMaterial({
-        color: '#f8fafc',
-        roughness: 0.2,
-        metalness: 0.1,
-        transparent: layers.electronics < 0.98,
-        opacity: layers.electronics,
-      }),
-      irisNitinol: new THREE.MeshStandardMaterial({
-        color: '#1d4ed8', // Biometric deep iris blue
-        roughness: 0.35,
-        metalness: 0.7,
-        transparent: layers.electronics < 0.98,
-        opacity: layers.electronics,
-      }),
-      pupilHole: new THREE.MeshBasicMaterial({ color: '#000000' }),
-      corneaLens: new THREE.MeshPhysicalMaterial({
+      // Layer 4: Bionic Eyeballs, Nitinol Iris & Micro-Electronics
+      corneaPhysical: new THREE.MeshPhysicalMaterial({
         color: '#ffffff',
         transmission: 0.95,
-        opacity: 0.3,
+        opacity: 0.35,
         transparent: true,
-        roughness: 0.05,
-        ior: 1.376,
+        roughness: 0.04,
+        ior: 1.376, // Anatomical human cornea refractive index
+        reflectivity: 0.8,
       }),
-      cameraPcb: new THREE.MeshStandardMaterial({
-        color: '#15803d',
-        roughness: 0.4,
-        metalness: 0.6,
-        emissive: '#16a34a',
-        emissiveIntensity: selectedPartId === 'eye_cam_left' || selectedPartId === 'eye_cam_right' ? 1.5 : 0.2,
+      scleraIvory: new THREE.MeshStandardMaterial({
+        color: '#f8fafc',
+        roughness: 0.25,
+        metalness: 0.08,
+        transparent: scleraAlpha < 0.98,
+        opacity: scleraAlpha,
+        depthWrite: scleraAlpha > 0.4,
       }),
-      goldLensBarrel: new THREE.MeshStandardMaterial({
-        color: '#d97706',
-        metalness: 0.9,
-        roughness: 0.2,
-      }),
-      orinBrain: new THREE.MeshStandardMaterial({
-        color: '#1e293b',
+      irisBladeNitinol: new THREE.MeshStandardMaterial({
+        color: '#1e3a8a', // Deep sapphire Nitinol SMA blades
         roughness: 0.3,
-        metalness: 0.85,
-        emissive: '#3b82f6',
-        emissiveIntensity: selectedPartId === 'orin_brain' ? 1.2 : 0.1,
+        metalness: 0.8,
+        side: THREE.DoubleSide,
       }),
-      batteryPack: new THREE.MeshStandardMaterial({
-        color: '#0f766e',
+      pupilApertureHole: new THREE.MeshBasicMaterial({ color: '#050505' }),
+      cameraPcbDynamic: new THREE.MeshStandardMaterial({
+        color: activeCamColor.pcb,
+        roughness: 0.35,
+        metalness: 0.7,
+        emissive: activeCamColor.emissive,
+        emissiveIntensity: selectedPartId === 'left_eyeball_camera' || selectedPartId === 'right_eyeball_camera' ? 1.6 : 0.4,
+      }),
+      lensBarrelBrass: new THREE.MeshStandardMaterial({
+        color: '#d97706',
+        roughness: 0.2,
+        metalness: 0.92,
+      }),
+      mipiFlexRibbon: new THREE.MeshStandardMaterial({
+        color: '#ea580c', // Orange polyimide flex ribbon
         roughness: 0.4,
+        metalness: 0.3,
+      }),
+      jetsonThorCore: new THREE.MeshStandardMaterial({
+        color: '#0f172a',
+        roughness: 0.25,
+        metalness: 0.9,
+        emissive: '#2563eb',
+        emissiveIntensity: selectedPartId === 'cerebrum_ai_core' ? 1.5 : 0.2,
+      }),
+      batteryCellGreen: new THREE.MeshStandardMaterial({
+        color: '#059669',
+        roughness: 0.35,
         metalness: 0.6,
-        emissive: selectedPartId === 'battery_pack' ? '#14b8a6' : '#000000',
-        emissiveIntensity: 0.8,
+        emissive: selectedPartId === 'battery_pack' ? '#10b981' : '#000000',
+        emissiveIntensity: 0.9,
       }),
     };
-  }, [layers, siliconeId, selectedPartId]);
+  }, [layers, siliconeId, selectedPartId, optics.selectedCameraId, eyeballShellOpacity]);
 
-  // Handle clickable part selection
+  // Clickable part dispatcher
   const handlePartClick = (e: any, part: Selectable3DPart) => {
     e.stopPropagation();
     if (onSelectPart) onSelectPart(part);
   };
 
   // ============================================================
-  // 24 mm BIONIC EYEBALL SUB-ASSEMBLY BUILDER
+  // PROCEDURAL 24 mm BIONIC EYEBALL ASSEMBLY
   // ============================================================
-  const buildBionicEyeball = (side: 'left' | 'right') => {
+  const build24mmBionicEyeball = (side: 'left' | 'right') => {
     const isLeft = side === 'left';
-    const xOffset = isLeft ? 0.032 : -0.032; // 64 mm human inter-pupillary distance (IPD)
-    const eyeRef = isLeft ? leftEyeRef : rightEyeRef;
-    const irisRef = isLeft ? leftIrisRef : rightIrisRef;
-    const camPartId = isLeft ? 'eye_cam_left' : 'eye_cam_right';
+    const xPos = isLeft ? -0.032 : 0.032; // 64 mm IPD
+    const camPartId = isLeft ? 'left_eyeball_camera' : 'right_eyeball_camera';
+    const gimbalRef = isLeft ? leftEyeGimbalRef : rightEyeGimbalRef;
+    const irisGroupRef = isLeft ? leftIrisGroupRef : rightIrisGroupRef;
 
     return (
-      <group position={[xOffset, 0.035, 0.075]}>
-        {/* Gimbal Support Frame (Layer 3/4) */}
-        {layers.electronics > 0.05 && (
-          <mesh position={[0, 0, -0.012]} material={mats.bone}>
-            <boxGeometry args={[0.032, 0.032, 0.01]} />
+      <group key={side} position={[xPos, 0.035, 0.075]}>
+        {/* Orbital Socket Gimbal Mounting Ring (Layer 3) */}
+        {layers.endoskeletal > 0.05 && (
+          <mesh rotation={[Math.PI / 2, 0, 0]} material={mats.aluminum7075}>
+            <torusGeometry args={[0.014, 0.002, 16, 24]} />
           </mesh>
         )}
 
-        {/* Rotatable Eyeball Sphere Group (24 mm diameter = 0.012 m radius) */}
-        <group ref={eyeRef}>
+        {/* 6-DoF Gimbal Rig (Coupled Pitch + Independent Vergence Yaw) */}
+        <group ref={gimbalRef}>
           {layers.electronics > 0.05 && (
-            <>
-              {/* 1. Sclera ivory housing (24 mm hollow sphere) */}
-              <mesh material={mats.sclera}>
+            <group
+              onClick={(e) =>
+                handlePartClick(e, {
+                  id: camPartId,
+                  name: `${isLeft ? 'Left' : 'Right'} 24mm Bionic Eyeball (${activeCamera.name})`,
+                  layer: 'electronics',
+                  category: 'eyeball_camera',
+                  worldPosition: [xPos, headCenterY + 0.035, 0.095],
+                  boundingBoxRadiusM: 0.025,
+                  activeSpecId: optics.selectedCameraId,
+                  availableSwaps: ['imx219', 'ov9281', 'ov5640', 'prophesee_event'],
+                })
+              }
+            >
+              {/* 1. Sclera 24 mm Ivory Shell with Cutaway Opacity */}
+              <mesh material={mats.scleraIvory}>
                 <sphereGeometry args={[0.012, 32, 32]} />
               </mesh>
 
-              {/* 2. Cornea transparent dome */}
-              <mesh position={[0, 0, 0.008]} material={mats.corneaLens}>
-                <sphereGeometry args={[0.007, 24, 24]} />
+              {/* 2. Cornea Optical Dome (r = 6.5 mm, offset forward) */}
+              <mesh position={[0, 0, 0.0075]} material={mats.corneaPhysical}>
+                <sphereGeometry args={[0.007, 24, 24, 0, Math.PI * 2, 0, Math.PI * 0.55]} />
               </mesh>
 
-              {/* 3. Nitinol 6-Blade Iris Diaphragm (2 mm to 7 mm pupil aperture) */}
-              <group ref={irisRef} position={[0, 0, 0.0118]}>
-                <mesh material={mats.irisNitinol}>
-                  <ringGeometry args={[0.002, 0.006, 24]} />
-                </mesh>
-                {/* Pupil Center Hole */}
-                <mesh material={mats.pupilHole}>
-                  <circleGeometry args={[0.002, 24]} />
+              {/* 3. Nitinol 6-Blade Iris Diaphragm Ring */}
+              <group ref={irisGroupRef} position={[0, 0, 0.0118]}>
+                {/* 6 Overlapping Nitinol Blades */}
+                {[0, 60, 120, 180, 240, 300].map((angleDeg, i) => (
+                  <mesh
+                    key={i}
+                    rotation={[0, 0, (angleDeg * Math.PI) / 180]}
+                    position={[0, 0, i * 0.0001]}
+                    material={mats.irisBladeNitinol}
+                  >
+                    <ringGeometry args={[0.0018, 0.0062, 12]} />
+                  </mesh>
+                ))}
+                {/* Pupil Center Opening */}
+                <mesh material={mats.pupilApertureHole} position={[0, 0, -0.0002]}>
+                  <circleGeometry args={[0.0018, 24]} />
                 </mesh>
               </group>
 
-              {/* 4. INTERNAL 8x8 mm CAMERA SENSOR PCB (Clickable / Swappable!) */}
-              <group
-                position={[0, 0, 0.003]}
-                onClick={(e) =>
-                  handlePartClick(e, {
-                    id: camPartId,
-                    name: `${isLeft ? 'Left' : 'Right'} Bionic Eyeball Camera (${activeCamera.name})`,
-                    layer: 'electronics',
-                    category: 'eyeball_camera',
-                    worldPosition: [xOffset, standingCenterY + H.torso * 0.5 + H.neck + 0.035, 0.075],
-                    boundingBoxRadiusM: 0.015,
-                    activeSpecId: optics.selectedCameraId,
-                    availableSwaps: ['imx219', 'ov9281', 'ov5640', 'prophesee_event'],
-                  })
-                }
-              >
+              {/* 4. Internal 8x8 mm Camera PCB & Optics Die (Inside Eyeball) */}
+              <group position={[0, 0, 0.002]}>
                 {/* Gold Lens Barrel */}
-                <mesh position={[0, 0, 0.004]} rotation={[Math.PI / 2, 0, 0]} material={mats.goldLensBarrel}>
-                  <cylinderGeometry args={[0.0025, 0.0025, 0.004, 16]} />
+                <mesh position={[0, 0, 0.005]} rotation={[Math.PI / 2, 0, 0]} material={mats.lensBarrelBrass}>
+                  <cylinderGeometry args={[0.0028, 0.0028, 0.0045, 16]} />
                 </mesh>
-                {/* 8x8 mm Micro-PCB */}
-                <mesh material={mats.cameraPcb}>
-                  <boxGeometry args={[0.008, 0.008, 0.0015]} />
+
+                {/* 8x8 mm CMOS Substrate Micro-PCB */}
+                <mesh material={mats.cameraPcbDynamic}>
+                  <boxGeometry args={[0.008, 0.008, 0.0016]} />
                 </mesh>
-                {/* Rear MIPI CSI-2 Ribbon Cable */}
-                <mesh position={[0, -0.006, -0.005]} rotation={[0.4, 0, 0]} material={mats.bone}>
-                  <boxGeometry args={[0.004, 0.01, 0.0004]} />
+
+                {/* Dark Silicon CMOS Sensor Die */}
+                <mesh position={[0, 0, 0.001]} material={mats.pupilApertureHole}>
+                  <boxGeometry args={[0.0045, 0.0045, 0.0004]} />
+                </mesh>
+
+                {/* Rear MIPI CSI-2 Orange Polyimide Flex Ribbon */}
+                <mesh position={[0, -0.006, -0.006]} rotation={[0.45, 0, 0]} material={mats.mipiFlexRibbon}>
+                  <boxGeometry args={[0.004, 0.012, 0.0003]} />
                 </mesh>
               </group>
-            </>
+            </group>
           )}
 
-          {/* Conformal Upper Eyelid */}
+          {/* 5. Conformal Upper & Lower Eyelids (tracking pitch & blink AU45) */}
           {layers.integumentary > 0.05 && (
-            <mesh position={[0, 0.006, 0.006]} rotation={[-facs.au5_upperLidRaiser * 0.4 + facs.au45_blink * 0.8, 0, 0]} material={mats.skin}>
-              <sphereGeometry args={[0.0125, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.35]} />
-            </mesh>
+            <group>
+              {/* Upper Eyelid */}
+              <mesh
+                position={[0, 0.004, 0.006]}
+                rotation={[-facs.au5_upperLidRaiser * 0.35 + facs.au45_blink * 0.75, 0, 0]}
+                material={mats.skin}
+              >
+                <sphereGeometry args={[0.0126, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.38]} />
+              </mesh>
+              {/* Lower Eyelid */}
+              <mesh
+                position={[0, -0.004, 0.006]}
+                rotation={[facs.au7_lidTightener * 0.25 + facs.au45_blink * 0.45, 0, 0]}
+                material={mats.skin}
+              >
+                <sphereGeometry args={[0.0126, 24, 12, 0, Math.PI * 2, Math.PI * 0.62, Math.PI * 0.38]} />
+              </mesh>
+            </group>
           )}
         </group>
       </group>
@@ -326,290 +468,505 @@ export const BiomimeticHumanoidModel: React.FC<BiomimeticHumanoidModelProps> = (
 
   return (
     <group ref={rootRef} position={position} rotation={[0, robotYaw, 0]}>
-      {/* Root positioned at standing center */}
-      <group position={[0, standingCenterY, 0]}>
-
-        {/* ======================================================== */}
-        {/* LAYER 3: ENDOSKELETON & THORACIC STRUCTURE              */}
-        {/* ======================================================== */}
+      {/* ======================================================== */}
+      {/* 1. ANATOMICAL HEAD & CRANIAL MULTI-LAYER ASSEMBLY         */}
+      {/* ======================================================== */}
+      <group position={[0, headCenterY, 0]}>
+        {/* Layer 3: CNC Carbon/Aluminum Cranial Skull */}
         {layers.endoskeletal > 0.05 && (
           <group>
-            {/* 24-Vertebrae Articulated Biomechanical Spine */}
-            {Array.from({ length: 8 }).map((_, i) => (
-              <mesh key={`vert_${i}`} position={[0, -H.torso * 0.4 + i * (H.torso / 9), -0.02]} material={mats.bone}>
-                <cylinderGeometry args={[0.022, 0.025, 0.035, 12]} />
+            {/* Cranium dome */}
+            <mesh position={[0, 0.02, -0.015]} material={mats.aluminum7075}>
+              <sphereGeometry args={[0.096, 32, 32]} />
+            </mesh>
+            {/* Temporal Bone Arches */}
+            <mesh position={[-0.08, 0, 0]} material={mats.aluminum7075}>
+              <boxGeometry args={[0.015, 0.06, 0.08]} />
+            </mesh>
+            <mesh position={[0.08, 0, 0]} material={mats.aluminum7075}>
+              <boxGeometry args={[0.015, 0.06, 0.08]} />
+            </mesh>
+          </group>
+        )}
+
+        {/* Layer 3: Articulated 4-Bar TMJ Mandible (Jaw) */}
+        <group ref={jawRef} position={[0, -0.045, 0.025]}>
+          {layers.endoskeletal > 0.05 && (
+            <mesh position={[0, -0.025, 0.02]} material={mats.aluminum7075}>
+              <boxGeometry args={[0.075, 0.045, 0.065]} />
+            </mesh>
+          )}
+          {/* Lower Lip Dermis */}
+          {layers.integumentary > 0.05 && (
+            <mesh position={[0, -0.02, 0.065]} material={mats.skin}>
+              <capsuleGeometry args={[0.012, 0.038, 8, 16]} />
+            </mesh>
+          )}
+        </group>
+
+        {/* Layer 2: 32-DoF Cranial FACS Bowden Cable Rig */}
+        {layers.musculoskeletal > 0.05 && (
+          <group>
+            {/* Clavicle-to-Face Cable Bundles */}
+            {[-0.045, -0.025, 0.025, 0.045].map((xOffset, i) => (
+              <mesh key={i} position={[xOffset, -0.07, 0.04]} rotation={[0.3, 0, xOffset * 2]} material={mats.bowdenSheath}>
+                <cylinderGeometry args={[0.0018, 0.0018, 0.12, 6]} />
               </mesh>
             ))}
+            {/* Zygomaticus Major Smile Cables (Anchored into Lip Corners) */}
+            <mesh position={[-0.048, -0.025, 0.058]} rotation={[0.45, 0, 0.55]} material={mats.bowdenSheath}>
+              <cylinderGeometry args={[0.0016, 0.0016, 0.095, 6]} />
+            </mesh>
+            <mesh position={[0.048, -0.025, 0.058]} rotation={[0.45, 0, -0.55]} material={mats.bowdenSheath}>
+              <cylinderGeometry args={[0.0016, 0.0016, 0.095, 6]} />
+            </mesh>
+            {/* Glowing Anchor Pins at Facial Anchor Pegs */}
+            <mesh position={[-0.038, -0.042, 0.072]} material={mats.anchorPinCyan}>
+              <sphereGeometry args={[0.003, 12, 12]} />
+            </mesh>
+            <mesh position={[0.038, -0.042, 0.072]} material={mats.anchorPinCyan}>
+              <sphereGeometry args={[0.003, 12, 12]} />
+            </mesh>
+            {/* Corrugator Brow Cables */}
+            <mesh position={[-0.022, 0.065, 0.07]} rotation={[-0.2, 0, 0.35]} material={mats.bowdenSheath}>
+              <cylinderGeometry args={[0.0014, 0.0014, 0.055, 6]} />
+            </mesh>
+            <mesh position={[0.022, 0.065, 0.07]} rotation={[-0.2, 0, -0.35]} material={mats.bowdenSheath}>
+              <cylinderGeometry args={[0.0014, 0.0014, 0.055, 6]} />
+            </mesh>
+          </group>
+        )}
 
-            {/* Thoracic Ribcage (12 Curved Rib Arches) */}
-            {Array.from({ length: 5 }).map((_, i) => (
-              <group key={`rib_${i}`} position={[0, -0.05 + i * 0.06, 0]}>
-                <mesh material={mats.carbonFrame}>
-                  <torusGeometry args={[0.14 - i * 0.01, 0.007, 8, 24, Math.PI * 1.3]} />
+        {/* Layer 4: Nested Dual 24 mm Bionic Eyeballs */}
+        {build24mmBionicEyeball('left')}
+        {build24mmBionicEyeball('right')}
+
+        {/* Layer 1: Translucent Silicone Facial Dermis with SSS & Hair */}
+        {layers.integumentary > 0.05 && (
+          <group
+            onClick={(e) =>
+              handlePartClick(e, {
+                id: 'silicone_face_skin',
+                name: `Facial Silicone Dermis (${activeSilicone.name})`,
+                layer: 'integumentary',
+                category: 'silicone_skin',
+                worldPosition: [0, headCenterY, 0.08],
+                boundingBoxRadiusM: 0.12,
+                activeSpecId: siliconeId,
+                availableSwaps: ['ecoflex_0010', 'ecoflex_0020', 'frubber', 'dragonskin_10'],
+              })
+            }
+          >
+            {/* Cranial Face Shell */}
+            <mesh position={[0, 0.015, 0.02]} material={mats.skin}>
+              <sphereGeometry args={[0.106, 36, 36]} />
+            </mesh>
+
+            {/* Nose Bridge & Nostrils */}
+            <mesh position={[0, 0.015, 0.096]} rotation={[-0.32, 0, 0]} material={mats.skin}>
+              <coneGeometry args={[0.016, 0.048, 16]} />
+            </mesh>
+
+            {/* Cheekbone Morphs (AU6 / AU12) */}
+            <mesh ref={leftCheekRef} position={[-0.045, 0.02, 0.082]} material={mats.skin}>
+              <sphereGeometry args={[0.026, 16, 16]} />
+            </mesh>
+            <mesh ref={rightCheekRef} position={[0.045, 0.02, 0.082]} material={mats.skin}>
+              <sphereGeometry args={[0.026, 16, 16]} />
+            </mesh>
+
+            {/* Mouth & Upper Lip Morph (AU12, AU20, AU25) */}
+            <group ref={mouthLipRef} position={[0, -0.035, 0.075]}>
+              <mesh material={mats.skin}>
+                <capsuleGeometry args={[0.009, 0.042, 8, 16]} />
+              </mesh>
+            </group>
+
+            {/* Eyebrow Hair Follicles (AU1 / AU2 / AU4) */}
+            <mesh ref={leftBrowRef} position={[-0.036, 0.065, 0.092]} rotation={[0, 0, -0.16]} material={mats.hair}>
+              <boxGeometry args={[0.042, 0.008, 0.005]} />
+            </mesh>
+            <mesh ref={rightBrowRef} position={[0.036, 0.065, 0.092]} rotation={[0, 0, 0.16]} material={mats.hair}>
+              <boxGeometry args={[0.042, 0.008, 0.005]} />
+            </mesh>
+
+            {/* Hairline Rim Mesh */}
+            <mesh position={[0, 0.095, 0.015]} rotation={[-0.45, 0, 0]} material={mats.hair}>
+              <torusGeometry args={[0.088, 0.012, 12, 32, Math.PI * 1.1]} />
+            </mesh>
+          </group>
+        )}
+      </group>
+
+      {/* ======================================================== */}
+      {/* 2. ARTICULATED CERVICAL NECK COMPLEX                     */}
+      {/* ======================================================== */}
+      <group position={[0, neckBaseY + H.neck * 0.5, 0]}>
+        {layers.endoskeletal > 0.05 && (
+          <mesh material={mats.aluminum7075}>
+            <cylinderGeometry args={[0.04, 0.048, H.neck, 16]} />
+          </mesh>
+        )}
+        {layers.musculoskeletal > 0.05 && (
+          <group>
+            {/* Sternocleidomastoid Hydro-Muscles */}
+            <mesh position={[-0.035, 0, 0.02]} rotation={[0.2, 0, 0.25]} material={mats.muscleBraided}>
+              <cylinderGeometry args={[0.014, 0.014, H.neck * 1.1, 12]} />
+            </mesh>
+            <mesh position={[0.035, 0, 0.02]} rotation={[0.2, 0, -0.25]} material={mats.muscleBraided}>
+              <cylinderGeometry args={[0.014, 0.014, H.neck * 1.1, 12]} />
+            </mesh>
+          </group>
+        )}
+        {layers.integumentary > 0.05 && (
+          <mesh material={mats.skin}>
+            <cylinderGeometry args={[0.052, 0.058, H.neck, 24]} />
+          </mesh>
+        )}
+      </group>
+
+      {/* ======================================================== */}
+      {/* 3. THORAX, 24-VERTEBRAE SPINE & CLOSED-LOOP COOLING      */}
+      {/* ======================================================== */}
+      <group position={[0, chestCenterY, 0]}>
+        {/* Layer 3: Endoskeleton & 24 Vertebrae Column */}
+        {layers.endoskeletal > 0.05 && (
+          <group>
+            {/* Clavicle Cross-Member Beam */}
+            <mesh position={[0, H.torso * 0.45, 0]} material={mats.aluminum7075}>
+              <boxGeometry args={[H.shoulderW * 0.9, 0.045, 0.08]} />
+            </mesh>
+
+            {/* Articulated 24-Vertebrae Spine Column */}
+            {Array.from({ length: 12 }).map((_, i) => (
+              <group key={i} position={[0, H.torso * 0.42 - i * (H.torso * 0.075), -0.06]}>
+                <mesh material={mats.vertebraeDisc}>
+                  <cylinderGeometry args={[0.022, 0.024, 0.024, 16]} />
+                </mesh>
+                {/* Ribcage lateral ring contours */}
+                <mesh rotation={[0, 0, Math.PI / 2]} material={mats.aluminum7075}>
+                  <torusGeometry args={[0.13 - i * 0.004, 0.005, 8, 24, Math.PI]} />
                 </mesh>
               </group>
             ))}
 
             {/* CNC 7075 Aluminum Pelvis Saddle Ring */}
-            <mesh position={[0, -H.torso * 0.5 - H.pelvis * 0.4, 0]} material={mats.bone}>
-              <boxGeometry args={[0.32, 0.12, 0.18]} />
+            <mesh position={[0, -H.torso * 0.5 - H.pelvis * 0.4, 0]} material={mats.aluminum7075}>
+              <boxGeometry args={[0.34, 0.14, 0.20]} />
             </mesh>
 
-            {/* Liquid Cooling Capillary Conduits (Blue = Supply, Red = Return) */}
+            {/* Closed-Loop Liquid Cooling Conduits */}
             {layers.showThermalLoop && (
               <group>
-                <mesh position={[-0.05, 0, 0.04]} material={mats.coolantBlue}>
-                  <cylinderGeometry args={[0.004, 0.004, H.torso * 0.8, 8]} />
+                <mesh position={[-0.055, 0, 0.05]} material={mats.coolantBlueSupply}>
+                  <cylinderGeometry args={[0.005, 0.005, H.torso * 0.85, 12]} />
                 </mesh>
-                <mesh position={[0.05, 0, 0.04]} material={mats.coolantRed}>
-                  <cylinderGeometry args={[0.004, 0.004, H.torso * 0.8, 8]} />
+                <mesh position={[0.055, 0, 0.05]} material={mats.coolantRedReturn}>
+                  <cylinderGeometry args={[0.005, 0.005, H.torso * 0.85, 12]} />
                 </mesh>
               </group>
             )}
           </group>
         )}
 
-        {/* ======================================================== */}
-        {/* LAYER 4: THORACIC COMPUTE & 16S BATTERY CORE             */}
-        {/* ======================================================== */}
+        {/* Layer 4: Dual NVIDIA Jetson Thor/Orin AI Cerebrum & 16S Battery */}
         {layers.electronics > 0.05 && (
           <group>
-            {/* Dual NVIDIA Jetson Orin/Thor AI Cerebrum Module */}
+            {/* NVIDIA Jetson Thor Core with Finned Heatsink */}
             <mesh
-              position={[0, 0.10, 0.01]}
-              material={mats.orinBrain}
+              position={[0, 0.10, 0.015]}
+              material={mats.jetsonThorCore}
               onClick={(e) =>
                 handlePartClick(e, {
-                  id: 'orin_brain',
-                  name: 'NVIDIA Jetson AGX Orin / Thor Dual-Brain Stack',
+                  id: 'cerebrum_ai_core',
+                  name: 'Cerebrum AI Core (Dual NVIDIA Jetson Thor 800 TOPS)',
                   layer: 'electronics',
                   category: 'compute_module',
-                  worldPosition: [0, standingCenterY + 0.10, 0.01],
-                  boundingBoxRadiusM: 0.08,
-                  activeSpecId: 'jetson_orin_agx',
+                  worldPosition: [0, chestCenterY + 0.10, 0.015],
+                  boundingBoxRadiusM: 0.10,
+                  activeSpecId: 'jetson_thor_automotive',
                   availableSwaps: ['jetson_orin_agx', 'jetson_thor_automotive'],
                 })
               }
             >
-              <boxGeometry args={[0.14, 0.14, 0.045]} />
+              <boxGeometry args={[0.15, 0.15, 0.05]} />
             </mesh>
 
-            {/* 16S NMC / Silicon-Anode Battery Pack (Lower Pelvic Core) */}
+            {/* 16S 58.8V Structural Battery Core (Pelvic Center of Mass) */}
             <mesh
-              position={[0, -H.torso * 0.35, 0]}
-              material={mats.batteryPack}
+              position={[0, -H.torso * 0.36, 0]}
+              material={mats.batteryCellGreen}
               onClick={(e) =>
                 handlePartClick(e, {
                   id: 'battery_pack',
-                  name: '16S Li-Ion High-Current Power Core',
+                  name: '16S 58.8V 2.4kWh Structural Battery Core',
                   layer: 'electronics',
                   category: 'battery_core',
-                  worldPosition: [0, standingCenterY - H.torso * 0.35, 0],
-                  boundingBoxRadiusM: 0.12,
-                  activeSpecId: 'nmc_21700_18kwh',
+                  worldPosition: [0, chestCenterY - H.torso * 0.36, 0],
+                  boundingBoxRadiusM: 0.14,
+                  activeSpecId: 'silicon_anode_4680_24kwh',
                   availableSwaps: ['nmc_21700_18kwh', 'silicon_anode_4680_24kwh'],
                 })
               }
             >
-              <boxGeometry args={[0.22, 0.18, 0.14]} />
+              <boxGeometry args={[0.24, 0.18, 0.15]} />
             </mesh>
           </group>
         )}
 
-        {/* ======================================================== */}
-        {/* LAYER 2: MUSCULOSKELETAL HYDRO-MUSCLES & QDDS           */}
-        {/* ======================================================== */}
+        {/* Layer 2: Upper-Body Pectorals & Latissimus McKibben Muscles */}
         {layers.musculoskeletal > 0.05 && (
           <group>
-            {/* McKibben Hydro-Muscles: Pectorals & Latissimus */}
-            <mesh position={[-0.11, 0.12, 0.07]} rotation={[0, 0, 0.4]} material={mats.muscle}>
-              <capsuleGeometry args={[0.035, 0.18, 8, 16]} />
+            {/* Pectoralis Major Muscles */}
+            <mesh position={[-0.08, 0.12, 0.08]} rotation={[0.2, -0.2, 0.4]} material={mats.muscleBraided}>
+              <boxGeometry args={[0.11, 0.08, 0.04]} />
             </mesh>
-            <mesh position={[0.11, 0.12, 0.07]} rotation={[0, 0, -0.4]} material={mats.muscle}>
-              <capsuleGeometry args={[0.035, 0.18, 8, 16]} />
-            </mesh>
-
-            {/* QDD Rotary Actuator Drums (Pelvis / Hip Hubs) */}
-            <mesh position={[-0.14, -H.torso * 0.5 - 0.02, 0]} rotation={[0, 0, Math.PI / 2]} material={mats.qddMotor}>
-              <cylinderGeometry args={[0.048, 0.048, 0.06, 16]} />
-            </mesh>
-            <mesh position={[0.14, -H.torso * 0.5 - 0.02, 0]} rotation={[0, 0, Math.PI / 2]} material={mats.qddMotor}>
-              <cylinderGeometry args={[0.048, 0.048, 0.06, 16]} />
+            <mesh position={[0.08, 0.12, 0.08]} rotation={[0.2, 0.2, -0.4]} material={mats.muscleBraided}>
+              <boxGeometry args={[0.11, 0.08, 0.04]} />
             </mesh>
           </group>
         )}
 
-        {/* ======================================================== */}
-        {/* HEAD & CRANIAL MULTI-LAYER ASSEMBLY                      */}
-        {/* ======================================================== */}
-        <group position={[0, H.torso * 0.5 + H.neck, 0]}>
-          {/* Cranial Skull Bone (Layer 3) */}
-          {layers.endoskeletal > 0.05 && (
-            <mesh position={[0, 0.02, -0.01]} material={mats.bone}>
-              <sphereGeometry args={[0.095, 24, 24]} />
-            </mesh>
-          )}
-
-          {/* 32-DoF FACS Bowden Micro-Cables (Layer 2) */}
-          {layers.musculoskeletal > 0.05 && (
-            <group>
-              {/* Zygomaticus Major (Smile cables) */}
-              <mesh position={[-0.045, -0.03, 0.055]} rotation={[0.4, 0, 0.5]} material={mats.tendonCable}>
-                <cylinderGeometry args={[0.0015, 0.0015, 0.09, 6]} />
-              </mesh>
-              <mesh position={[0.045, -0.03, 0.055]} rotation={[0.4, 0, -0.5]} material={mats.tendonCable}>
-                <cylinderGeometry args={[0.0015, 0.0015, 0.09, 6]} />
-              </mesh>
-              {/* Corrugator Brow Cables */}
-              <mesh position={[-0.025, 0.065, 0.065]} rotation={[-0.2, 0, 0.3]} material={mats.tendonCable}>
-                <cylinderGeometry args={[0.0012, 0.0012, 0.05, 6]} />
-              </mesh>
-              <mesh position={[0.025, 0.065, 0.065]} rotation={[-0.2, 0, -0.3]} material={mats.tendonCable}>
-                <cylinderGeometry args={[0.0012, 0.0012, 0.05, 6]} />
-              </mesh>
-            </group>
-          )}
-
-          {/* 4-Bar Linkage TMJ Jaw (Layer 3) */}
-          <group ref={jawRef} position={[0, -0.04, 0.02]}>
-            {layers.endoskeletal > 0.05 && (
-              <mesh position={[0, -0.02, 0.03]} material={mats.bone}>
-                <boxGeometry args={[0.07, 0.035, 0.06]} />
-              </mesh>
-            )}
-            {/* Lower Lip Skin (Layer 1) */}
-            {layers.integumentary > 0.05 && (
-              <mesh position={[0, -0.015, 0.065]} material={mats.skin}>
-                <capsuleGeometry args={[0.012, 0.035, 8, 16]} />
-              </mesh>
-            )}
-          </group>
-
-          {/* LEFT & RIGHT 24 mm BIONIC EYEBALLS */}
-          {buildBionicEyeball('left')}
-          {buildBionicEyeball('right')}
-
-          {/* Layer 1: Silicone Dermis (Face Mesh with SSS) */}
-          {layers.integumentary > 0.05 && (
-            <group
-              onClick={(e) =>
-                handlePartClick(e, {
-                  id: 'silicone_face_skin',
-                  name: `Facial Silicone Dermis (${activeSilicone.name})`,
-                  layer: 'integumentary',
-                  category: 'silicone_skin',
-                  worldPosition: [0, standingCenterY + H.torso * 0.5 + H.neck + 0.02, 0.06],
-                  boundingBoxRadiusM: 0.12,
-                  activeSpecId: siliconeId,
-                  availableSwaps: ['ecoflex_0010', 'ecoflex_0020', 'frubber', 'dragonskin_10'],
-                })
-              }
-            >
-              {/* Cranial Face Shell */}
-              <mesh position={[0, 0.02, 0.02]} material={mats.skin}>
-                <sphereGeometry args={[0.105, 32, 32]} />
-              </mesh>
-
-              {/* Nose Bridge */}
-              <mesh position={[0, 0.02, 0.09]} rotation={[-0.3, 0, 0]} material={mats.skin}>
-                <coneGeometry args={[0.015, 0.045, 12]} />
-              </mesh>
-
-              {/* Eyebrow Hair Follicles (Layer 1) */}
-              <mesh position={[-0.035, 0.062, 0.088]} rotation={[0, 0, -0.15]} material={mats.hair}>
-                <boxGeometry args={[0.04, 0.007, 0.004]} />
-              </mesh>
-              <mesh position={[0.035, 0.062, 0.088]} rotation={[0, 0, 0.15]} material={mats.hair}>
-                <boxGeometry args={[0.04, 0.007, 0.004]} />
-              </mesh>
-            </group>
-          )}
-        </group>
-
-        {/* ======================================================== */}
-        {/* TORSO SILICONE DERMIS (Layer 1 Outer Skin)               */}
-        {/* ======================================================== */}
+        {/* Layer 1: Torso Silicone Dermis Shell */}
         {layers.integumentary > 0.05 && (
-          <mesh position={[0, 0, 0]} material={mats.skin}>
-            <capsuleGeometry args={[0.19, 0.36, 16, 24]} />
+          <mesh material={mats.skin}>
+            <capsuleGeometry args={[0.15, H.torso * 0.75, 16, 24]} />
           </mesh>
         )}
+      </group>
 
-        {/* ======================================================== */}
-        {/* 180 CM LIMB ASSEMBLIES (Bilateral Arms & Legs)           */}
-        {/* ======================================================== */}
-        {/* Right & Left Arms */}
-        {[-1, 1].map((side) => {
-          const x = side * (H.shoulderWidth * 0.5);
-          return (
-            <group key={`arm_${side}`} position={[x, 0.18, 0]}>
-              {/* Shoulder QDD joint (Layer 2/3) */}
-              {layers.musculoskeletal > 0.05 && (
-                <mesh material={mats.qddMotor}>
-                  <sphereGeometry args={[0.045, 16, 16]} />
-                </mesh>
-              )}
-              {/* Upper Arm McKibben Bicep (Layer 2) */}
-              {layers.musculoskeletal > 0.05 && (
-                <mesh position={[0, -H.armL * 0.5, 0]} material={mats.muscle}>
-                  <capsuleGeometry args={[0.035, H.armL * 0.7, 8, 16]} />
-                </mesh>
-              )}
-              {/* Forearm & 24-DoF Dexterous Hand */}
-              <group position={[0, -H.armL, 0]}>
-                {layers.endoskeletal > 0.05 && (
-                  <mesh position={[0, -H.forearmL * 0.5, 0]} material={mats.bone}>
-                    <cylinderGeometry args={[0.02, 0.025, H.forearmL, 12]} />
-                  </mesh>
-                )}
-                {/* 24-DoF Hand Assembly */}
-                <mesh position={[0, -H.forearmL - H.handL * 0.5, 0]} material={layers.integumentary > 0.2 ? mats.skin : mats.bone}>
-                  <boxGeometry args={[0.085, H.handL, 0.03]} />
-                </mesh>
-              </group>
-            </group>
-          );
-        })}
+      {/* ======================================================== */}
+      {/* 4. UPPER LIMBS: MCKIBBEN HYDRO-MUSCLES & 24-DOF HANDS   */}
+      {/* ======================================================== */}
+      {[-1, 1].map((sideMul) => {
+        const isLeft = sideMul === -1;
+        const armX = sideMul * (H.shoulderW * 0.5);
+        const shoulderY = chestCenterY + H.torso * 0.38;
 
-        {/* Right & Left Legs */}
-        {[-1, 1].map((side) => {
-          const x = side * 0.14;
-          return (
-            <group key={`leg_${side}`} position={[x, -H.torso * 0.5 - H.pelvis * 0.5, 0]}>
-              {/* Thigh (Femur + Roller Screw) */}
+        return (
+          <group key={sideMul} position={[armX, shoulderY, 0]}>
+            {/* Shoulder Ball Joint */}
+            {layers.endoskeletal > 0.05 && (
+              <mesh material={mats.aluminum7075}>
+                <sphereGeometry args={[0.045, 16, 16]} />
+              </mesh>
+            )}
+
+            {/* Bicep / Tricep Braided Hydro-Muscles (Bulging radially) */}
+            <group position={[0, -H.upperArmL * 0.5, 0]}>
               {layers.endoskeletal > 0.05 && (
-                <mesh position={[0, -H.thigh * 0.5, 0]} material={mats.bone}>
-                  <cylinderGeometry args={[0.035, 0.04, H.thigh, 16]} />
+                <mesh material={mats.aluminum7075}>
+                  <cylinderGeometry args={[0.022, 0.024, H.upperArmL * 0.9, 12]} />
+                </mesh>
+              )}
+              {layers.musculoskeletal > 0.05 && (
+                <mesh
+                  ref={isLeft ? bicepLeftRef : bicepRightRef}
+                  position={[0, 0, 0.015]}
+                  material={mats.muscleBraided}
+                >
+                  <capsuleGeometry args={[0.038, H.upperArmL * 0.65, 12, 16]} />
                 </mesh>
               )}
               {layers.integumentary > 0.05 && (
-                <mesh position={[0, -H.thigh * 0.5, 0]} material={mats.skin}>
-                  <capsuleGeometry args={[0.075, H.thigh * 0.75, 12, 16]} />
+                <mesh material={mats.skin}>
+                  <capsuleGeometry args={[0.046, H.upperArmL * 0.72, 12, 16]} />
                 </mesh>
               )}
-              {/* Knee Hub & Shank (Tibia) */}
-              <group position={[0, -H.thigh, 0]}>
-                {layers.musculoskeletal > 0.05 && (
-                  <mesh material={mats.qddMotor}>
-                    <cylinderGeometry args={[0.042, 0.042, 0.07, 16]} />
-                  </mesh>
-                )}
+            </group>
+
+            {/* Forearm & 24-DoF Dexterous Tendon Hand */}
+            <group position={[0, -H.upperArmL, 0]}>
+              {/* Elbow Joint */}
+              {layers.endoskeletal > 0.05 && (
+                <mesh material={mats.aluminum7075}>
+                  <sphereGeometry args={[0.038, 16, 16]} />
+                </mesh>
+              )}
+
+              {/* Forearm Flexors */}
+              <group position={[0, -H.forearmL * 0.5, 0]}>
                 {layers.endoskeletal > 0.05 && (
-                  <mesh position={[0, -H.shin * 0.5, 0]} material={mats.bone}>
-                    <cylinderGeometry args={[0.03, 0.035, H.shin, 16]} />
+                  <mesh material={mats.aluminum7075}>
+                    <cylinderGeometry args={[0.018, 0.022, H.forearmL * 0.85, 12]} />
                   </mesh>
                 )}
-                {/* Articulated Foot Sole */}
-                <group position={[0, -H.shin, H.footL * 0.2]}>
-                  <mesh position={[0, -H.footH * 0.5, 0]} material={layers.integumentary > 0.2 ? mats.skin : mats.bone}>
-                    <boxGeometry args={[H.footW, H.footH, H.footL]} />
+                {layers.musculoskeletal > 0.05 && (
+                  <mesh material={mats.muscleBraided}>
+                    <capsuleGeometry args={[0.032, H.forearmL * 0.62, 12, 16]} />
+                  </mesh>
+                )}
+                {layers.integumentary > 0.05 && (
+                  <mesh material={mats.skin}>
+                    <capsuleGeometry args={[0.038, H.forearmL * 0.72, 12, 16]} />
+                  </mesh>
+                )}
+              </group>
+
+              {/* 24-DoF Anthropomorphic Hand Assembly */}
+              <group
+                position={[0, -H.forearmL, 0]}
+                onClick={(e) =>
+                  handlePartClick(e, {
+                    id: isLeft ? 'l_arm_mckibben_hand' : 'r_arm_mckibben_hand',
+                    name: `${isLeft ? 'Left' : 'Right'} 24-DoF Tendon Hand & Taxel Array`,
+                    layer: 'musculoskeletal',
+                    category: 'limb_actuators',
+                    worldPosition: [armX, shoulderY - H.upperArmL - H.forearmL, 0],
+                    boundingBoxRadiusM: 0.12,
+                    activeSpecId: '24dof_tendon_hand',
+                    availableSwaps: ['24dof_tendon_hand'],
+                  })
+                }
+              >
+                {/* Palm Base Plate */}
+                {layers.endoskeletal > 0.05 && (
+                  <mesh material={mats.aluminum7075} position={[0, -0.045, 0]}>
+                    <boxGeometry args={[0.075, 0.07, 0.022]} />
+                  </mesh>
+                )}
+                {layers.integumentary > 0.05 && (
+                  <mesh material={mats.skin} position={[0, -0.045, 0]}>
+                    <boxGeometry args={[0.082, 0.076, 0.026]} />
+                  </mesh>
+                )}
+
+                {/* 5 Distinct Articulated Fingers (Thumb, Index, Middle, Ring, Pinky) */}
+                {[-0.028, -0.010, 0.008, 0.026].map((digitX, fIndex) => (
+                  <group key={fIndex} position={[digitX, -0.08, 0]}>
+                    {/* Proximal Phalange */}
+                    <mesh position={[0, -0.018, 0]} material={layers.endoskeletal > 0.05 ? mats.aluminum7075 : mats.skin}>
+                      <cylinderGeometry args={[0.006, 0.006, 0.032, 8]} />
+                    </mesh>
+                    {/* Intermediate Phalange */}
+                    <mesh position={[0, -0.045, 0]} material={layers.endoskeletal > 0.05 ? mats.aluminum7075 : mats.skin}>
+                      <cylinderGeometry args={[0.005, 0.005, 0.026, 8]} />
+                    </mesh>
+                    {/* Distal Phalange + Fingertip Taxel */}
+                    <mesh position={[0, -0.066, 0]} material={mats.taxelGlow}>
+                      <sphereGeometry args={[0.006, 12, 12]} />
+                    </mesh>
+                  </group>
+                ))}
+
+                {/* Opposable Thumb */}
+                <group position={[sideMul * 0.045, -0.035, 0.015]} rotation={[0.4, sideMul * 0.6, 0]}>
+                  <mesh position={[0, -0.02, 0]} material={layers.endoskeletal > 0.05 ? mats.aluminum7075 : mats.skin}>
+                    <cylinderGeometry args={[0.007, 0.007, 0.035, 8]} />
+                  </mesh>
+                  <mesh position={[0, -0.045, 0]} material={mats.taxelGlow}>
+                    <sphereGeometry args={[0.007, 12, 12]} />
                   </mesh>
                 </group>
               </group>
             </group>
-          );
-        })}
-      </group>
+          </group>
+        );
+      })}
+
+      {/* ======================================================== */}
+      {/* 5. LOWER LIMBS: HIGH-TORQUE QDDS & ROLLER SCREWS         */}
+      {/* ======================================================== */}
+      {[-1, 1].map((sideMul) => {
+        const isLeft = sideMul === -1;
+        const hipX = sideMul * 0.105;
+
+        return (
+          <group key={sideMul} position={[hipX, hipY, 0]}>
+            {/* Pelvis-Hip 360 Nm QDD Rotary Actuator */}
+            {layers.musculoskeletal > 0.05 && (
+              <group
+                onClick={(e) =>
+                  handlePartClick(e, {
+                    id: 'lower_body_qdd_actuators',
+                    name: `${isLeft ? 'Left' : 'Right'} Hip 360Nm Brushless QDD Actuator`,
+                    layer: 'musculoskeletal',
+                    category: 'lower_actuators',
+                    worldPosition: [hipX, hipY, 0],
+                    boundingBoxRadiusM: 0.12,
+                    activeSpecId: 'robedrive_ilm_qdd',
+                    availableSwaps: ['robedrive_ilm_qdd'],
+                  })
+                }
+              >
+                <mesh rotation={[0, 0, Math.PI / 2]} material={mats.qddBrushless}>
+                  <cylinderGeometry args={[0.058, 0.058, 0.065, 24]} />
+                </mesh>
+                <mesh rotation={[0, 0, Math.PI / 2]} material={mats.copperStator}>
+                  <torusGeometry args={[0.048, 0.005, 8, 24]} />
+                </mesh>
+              </group>
+            )}
+
+            {/* Thigh: Planetary Roller-Screw Linear Actuator */}
+            <group position={[0, -H.thigh * 0.5, 0]}>
+              {layers.endoskeletal > 0.05 && (
+                <mesh material={mats.aluminum7075}>
+                  <cylinderGeometry args={[0.038, 0.042, H.thigh * 0.9, 16]} />
+                </mesh>
+              )}
+              {/* Inverted Roller Screw Cylinders */}
+              {layers.musculoskeletal > 0.05 && (
+                <mesh position={[0, 0, -0.015]} material={mats.qddBrushless}>
+                  <cylinderGeometry args={[0.026, 0.026, H.thigh * 0.75, 16]} />
+                </mesh>
+              )}
+              {layers.integumentary > 0.05 && (
+                <mesh material={mats.skin}>
+                  <capsuleGeometry args={[0.068, H.thigh * 0.75, 16, 24]} />
+                </mesh>
+              )}
+            </group>
+
+            {/* Knee Joint & Shin Assembly */}
+            <group position={[0, -H.thigh, 0]}>
+              {/* Knee 8000N Roller-Screw Pivot */}
+              {layers.endoskeletal > 0.05 && (
+                <mesh rotation={[0, 0, Math.PI / 2]} material={mats.aluminum7075}>
+                  <cylinderGeometry args={[0.042, 0.042, 0.075, 20]} />
+                </mesh>
+              )}
+
+              {/* Calf / Shin */}
+              <group position={[0, -H.shin * 0.5, 0]}>
+                {layers.endoskeletal > 0.05 && (
+                  <mesh material={mats.aluminum7075}>
+                    <cylinderGeometry args={[0.030, 0.034, H.shin * 0.88, 16]} />
+                  </mesh>
+                )}
+                {layers.musculoskeletal > 0.05 && (
+                  <mesh position={[0, 0, -0.02]} material={mats.muscleBraided}>
+                    <capsuleGeometry args={[0.036, H.shin * 0.65, 12, 16]} />
+                  </mesh>
+                )}
+                {layers.integumentary > 0.05 && (
+                  <mesh material={mats.skin}>
+                    <capsuleGeometry args={[0.055, H.shin * 0.75, 16, 24]} />
+                  </mesh>
+                )}
+              </group>
+
+              {/* Ankle & Articulated Foot Sole */}
+              <group position={[0, -H.shin, 0]}>
+                {/* Ankle Dual-Link Actuator */}
+                {layers.endoskeletal > 0.05 && (
+                  <mesh material={mats.aluminum7075}>
+                    <sphereGeometry args={[0.036, 16, 16]} />
+                  </mesh>
+                )}
+                {/* Foot Sole with Ground Contact Force Transducers */}
+                <mesh position={[0, -H.footH * 0.5, H.footL * 0.15]} material={mats.aluminum7075}>
+                  <boxGeometry args={[H.footW, H.footH, H.footL]} />
+                </mesh>
+                {/* Rubber Sole Ground Contact Pad */}
+                <mesh position={[0, -H.footH, H.footL * 0.15]} material={mats.qddBrushless}>
+                  <boxGeometry args={[H.footW * 1.05, 0.012, H.footL * 1.05]} />
+                </mesh>
+              </group>
+            </group>
+          </group>
+        );
+      })}
     </group>
   );
 };

@@ -32,8 +32,8 @@ export const RobotEyePiPViewport: React.FC<RobotEyePiPViewportProps> = ({
   const blurPx = metrics.depthOfFieldBlurPx;
 
   return (
-    <div className={`fixed bottom-4 right-4 z-40 bg-[#0a0e17]/95 backdrop-blur-md border border-cyan-500/50 rounded-xl shadow-2xl overflow-hidden transition-all duration-300 select-none ${
-      isMinimized ? 'w-48 h-10' : 'w-72 sm:w-80 h-56'
+    <div className={`absolute top-12 right-3 z-20 bg-[#0a0e17]/95 backdrop-blur-md border border-cyan-500/50 rounded-xl shadow-2xl overflow-hidden transition-all duration-300 select-none ${
+      isMinimized ? 'w-48 h-8' : 'w-64 sm:w-72 h-48'
     }`}>
       {/* PiP Header */}
       <div className="h-8 bg-[#111827] border-b border-slate-800 px-3 flex items-center justify-between text-xs">

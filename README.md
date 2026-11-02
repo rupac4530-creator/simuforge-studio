@@ -19,18 +19,16 @@
 
 ---
 
-## 🌟 Overview: Full-Scale Humanoid Robotics & Multi-Physics Engineering
+## 🌟 Overview: Flagship 180 cm Biomimetic Humanoid Digital Twin
 
-**SimuForge Studio** is an open-source, browser-native 3D robotics simulation platform, rigid-body multi-physics testbed, and digital twin environment. 
+**SimuForge Studio** is an open-source, browser-native 3D robotics simulation platform, rigid-body multi-physics testbed, and digital twin environment dedicated exclusively to this **180 cm Biomimetic Humanoid Engineering Project** (68.4 kg, 110+ Degrees of Freedom, 4 Concentric Anatomical Layers).
 
-The studio features two complete robot architectures:
-1. **180 cm Biomimetic Humanoid Digital Twin (`180cm_biomimetic`)**: An adult human-scale anthropomorphic digital twin inspired by state-of-the-art research platforms:
-   - **Engineered Arts *Ameca*** (facial expressiveness and Bowden cable actuation)
-   - **Hanson Robotics *Sophia*** (Frubber porous dermal mechanics and micro-wrinkles)
-   - **JSK University of Tokyo *Kenshiro / Kengoro*** (musculoskeletal McKibben hydro-muscles and articulated spine)
-   - **Disney Research Animatronics** (high-speed gaze saccades and coordinated eyelid-gaze kinematics)
-   - **Tesla *Optimus Gen 2* & Figure AI *Figure 02*** (high-torque Quasi-Direct Drive rotary actuators, roller screws, and 58V power architecture).
-2. **17-DOF Hash V3 Miniature Humanoid Robot (`45cm_hash_v3`)**: A 45 cm bipedal robot platform with generalized coordinate kinematics, static inverse dynamics, ground reaction contact mechanics, 6-DOF MEMS IMU sensor fusion, an interactive circuit workbench, and sandboxed firmware scripting.
+Inspired by state-of-the-art global humanoid robotics:
+- **Engineered Arts *Ameca*** (cranial Bowden cable actuation, subtle silicone facial expression & micro-wrinkles)
+- **Hanson Robotics *Sophia*** (porous elastomeric dermal mechanics, anchor pegs, and lifelike skin compliance)
+- **Clone Robotics & JSK University of Tokyo *Kenshiro / Kengoro*** (full-body musculoskeletal McKibben hydro-muscles, articulated 24-vertebrae spine, and vascular liquid cooling network)
+- **Disney Research Animatronics** (high-speed gaze vergence saccades and coupled eyelid kinematics)
+- **Tesla *Optimus Gen 2* & Figure AI *Figure 02*** (high-torque Quasi-Direct Drive lower-body actuators, planetary roller screws, 1000 Hz EtherCAT ring, and 16S 58.8V 2.4kWh structural battery core).
 
 ---
 

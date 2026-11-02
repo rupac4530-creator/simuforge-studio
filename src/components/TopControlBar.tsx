@@ -1,9 +1,8 @@
 import React from 'react';
 import { SimState, VoiceCommand, VOICE_COMMANDS } from '../types/simulation';
-import { Play, Pause, SkipForward, RotateCcw, Wifi, Bot, Layers, Cable, Box, BarChart3, User, Sparkles } from 'lucide-react';
+import { Play, Pause, SkipForward, RotateCcw, Bot, Cable, Box, BarChart3, Activity } from 'lucide-react';
 
-type ViewMode = 'simulator' | 'circuit' | 'dynamics';
-export type ModelScale = '180cm_biomimetic' | '45cm_hash_v3';
+export type ViewMode = 'simulator' | 'circuit' | 'dynamics';
 
 interface TopControlBarProps {
   simState: SimState;
@@ -19,8 +18,6 @@ interface TopControlBarProps {
   onVoiceCommand: (cmd: VoiceCommand) => void;
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
-  modelScale?: ModelScale;
-  onModelScaleChange?: (scale: ModelScale) => void;
 }
 
 export const TopControlBar: React.FC<TopControlBarProps> = ({
@@ -37,8 +34,6 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
   onVoiceCommand,
   viewMode,
   onViewModeChange,
-  modelScale = '180cm_biomimetic',
-  onModelScaleChange,
 }) => {
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -47,87 +42,54 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
   };
 
-  const getQualityColor = (quality: number) => {
-    if (quality >= 75) return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30';
-    if (quality >= 40) return 'text-amber-400 bg-amber-500/10 border-amber-500/30';
-    return 'text-rose-400 bg-rose-500/10 border-rose-500/30';
-  };
-
   return (
     <header className="h-12 w-full bg-[#111827] border-b border-[#1e293b] px-4 flex items-center justify-between select-none z-30 shrink-0">
       {/* Left: Branding + View Switcher */}
       <div className="flex items-center space-x-3">
-        <div className="flex items-center space-x-2 text-blue-400 font-bold tracking-wider text-sm bg-blue-950/40 px-2.5 py-1 rounded-md border border-blue-800/40">
+        <div className="flex items-center space-x-2 text-cyan-400 font-bold tracking-wider text-sm bg-cyan-950/40 px-3 py-1 rounded-md border border-cyan-800/40">
           <Bot className="w-4 h-4 text-cyan-400" />
-          <span className="text-white">SIMU<span className="text-blue-400">FORGE</span></span>
-          <span className="text-xs px-1.5 py-0.2 bg-blue-500/20 text-cyan-300 rounded font-mono">BIOMIMETIC</span>
+          <span className="text-white">SIMU<span className="text-cyan-400">FORGE</span></span>
+          <span className="text-[10px] px-1.5 py-0.5 bg-cyan-500/20 text-cyan-300 rounded font-mono font-semibold tracking-wide">
+            180cm BIOMIMETIC DIGITAL TWIN
+          </span>
         </div>
 
         {/* View Mode Switcher */}
         <div className="flex items-center bg-[#0a0e17] rounded-lg p-0.5 border border-[#1e293b]">
           <button
             onClick={() => onViewModeChange('simulator')}
-            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
+            className={`flex items-center space-x-1.5 px-3 py-1 rounded-md text-[11px] font-bold transition-all ${
               viewMode === 'simulator'
-                ? 'bg-blue-600/30 text-blue-300 border border-blue-500/40'
-                : 'text-slate-500 hover:text-slate-300'
+                ? 'bg-cyan-600/30 text-cyan-300 border border-cyan-500/40 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Box className="w-3 h-3" />
+            <Box className="w-3.5 h-3.5" />
             <span>3D SIMULATOR</span>
           </button>
           <button
             onClick={() => onViewModeChange('circuit')}
-            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
+            className={`flex items-center space-x-1.5 px-3 py-1 rounded-md text-[11px] font-bold transition-all ${
               viewMode === 'circuit'
-                ? 'bg-violet-600/30 text-violet-300 border border-violet-500/40'
-                : 'text-slate-500 hover:text-slate-300'
+                ? 'bg-violet-600/30 text-violet-300 border border-violet-500/40 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Cable className="w-3 h-3" />
-            <span>CIRCUIT EDITOR</span>
+            <Cable className="w-3.5 h-3.5" />
+            <span>NERVOUS SYSTEM & BUS ARCHITECTURE</span>
           </button>
           <button
             onClick={() => onViewModeChange('dynamics')}
-            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
+            className={`flex items-center space-x-1.5 px-3 py-1 rounded-md text-[11px] font-bold transition-all ${
               viewMode === 'dynamics'
-                ? 'bg-amber-600/30 text-amber-300 border border-amber-500/40'
-                : 'text-slate-500 hover:text-slate-300'
+                ? 'bg-amber-600/30 text-amber-300 border border-amber-500/40 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <BarChart3 className="w-3 h-3" />
-            <span>DYNAMICS</span>
+            <BarChart3 className="w-3.5 h-3.5" />
+            <span>DYNAMICS & STABILITY</span>
           </button>
         </div>
-
-        {/* Model Scale Selector Toggle */}
-        {onModelScaleChange && (
-          <div className="hidden lg:flex items-center bg-[#0a0e17] rounded-lg p-0.5 border border-cyan-800/40">
-            <button
-              onClick={() => onModelScaleChange('180cm_biomimetic')}
-              className={`flex items-center space-x-1 px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
-                modelScale === '180cm_biomimetic'
-                  ? 'bg-cyan-600/30 text-cyan-300 border border-cyan-500/50'
-                  : 'text-slate-500 hover:text-slate-300'
-              }`}
-              title="180 cm Biomimetic Humanoid with 4 anatomical layers & 24mm bionic eyeballs"
-            >
-              <User className="w-3 h-3" />
-              <span>180cm BIOMIMETIC</span>
-            </button>
-            <button
-              onClick={() => onModelScaleChange('45cm_hash_v3')}
-              className={`flex items-center space-x-1 px-2 py-1 rounded-md text-[10px] font-bold transition-all ${
-                modelScale === '45cm_hash_v3'
-                  ? 'bg-slate-700/50 text-slate-200 border border-slate-600'
-                  : 'text-slate-500 hover:text-slate-300'
-              }`}
-              title="Small 45 cm 17-DOF Hash V3 table prototype"
-            >
-              <span>45cm HASH V3</span>
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Center: Transport Controls & Speed */}
@@ -164,7 +126,7 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
 
           <button
             onClick={onReset}
-            title="Reset Robot & Simulation"
+            title="Reset Humanoid to Home Posture"
             className="p-1.5 px-2 hover:bg-slate-800 text-slate-300 hover:text-rose-400 rounded transition-colors text-xs flex items-center space-x-1"
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -173,7 +135,7 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
         </div>
 
         {/* Speed multiplier */}
-        <div className="flex items-center space-x-1.5 text-xs bg-[#0a0e17] px-2 py-1 rounded-md border border-[#1e293b]">
+        <div className="flex items-center space-x-1.5 text-xs bg-[#0a0e17] px-2.5 py-1 rounded-md border border-[#1e293b]">
           <span className="text-slate-400">Speed:</span>
           <select
             value={simSpeed}
@@ -199,11 +161,11 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
         </div>
       </div>
 
-      {/* Right: Voice Command & RF Badge */}
+      {/* Right: Biomimetic Gesture Trigger & Deterministic EtherCAT Ring Telemetry */}
       <div className="flex items-center space-x-3">
-        {/* Voice Command Quick Trigger */}
+        {/* Voice / Gesture Command Trigger */}
         <div className="flex items-center space-x-1.5 bg-[#0a0e17] px-2 py-1 rounded-md border border-[#1e293b]">
-          <span className="text-xs text-slate-400 hidden sm:inline">Voice Cmd:</span>
+          <span className="text-xs text-slate-400 hidden sm:inline">Gesture / Voice:</span>
           <select
             defaultValue=""
             onChange={(e) => {
@@ -214,7 +176,7 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
             }}
             className="bg-transparent text-amber-300 font-medium text-xs focus:outline-none cursor-pointer max-w-[130px] truncate"
           >
-            <option value="" disabled className="bg-[#111827]">⚡ Trigger Gesture...</option>
+            <option value="" disabled className="bg-[#111827]">⚡ Trigger Action...</option>
             {VOICE_COMMANDS.map((cmd) => (
               <option key={cmd} value={cmd} className="bg-[#111827] text-white">
                 {cmd}
@@ -223,10 +185,10 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
           </select>
         </div>
 
-        {/* RF Signal Link Status */}
-        <div className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md border text-xs font-mono ${getQualityColor(rfLinkQuality)}`}>
-          <Wifi className="w-3.5 h-3.5" />
-          <span>{Math.round(rfLinkQuality)}%</span>
+        {/* EtherCAT Ring Deterministic Sync Badge */}
+        <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md border text-xs font-mono text-emerald-400 bg-emerald-500/10 border-emerald-500/30">
+          <Activity className="w-3.5 h-3.5 text-emerald-400" />
+          <span>EtherCAT 1000Hz (0.8µs)</span>
         </div>
       </div>
     </header>

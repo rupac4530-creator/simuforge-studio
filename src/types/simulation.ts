@@ -46,21 +46,21 @@ export const PCA_CHANNEL_MAP: Record<ServoName, { board: 0 | 1; channel: number 
   Head_Yaw:          { board: 1, channel: 0 },
 };
 
-// ---- Robot Dimensions (mm) — Master Spec ----
+// ---- Robot Dimensions (mm) — 180 cm Biomimetic Humanoid Master Spec ----
 export const ROBOT_DIMS = {
-  totalHeight: 450,
-  shoulderWidth: 220,
-  maxDepth: 110,
-  head: { w: 80, h: 70, d: 60 },
-  neck: { h: 35 },
-  torso: { w: 140, h: 145, d: 70 },
-  pelvis: { w: 110, h: 35, d: 65 },
-  upperArm: { length: 85, w: 30, d: 25 },
-  forearm: { length: 80, w: 25, d: 20 },
-  hand: { length: 55, w: 20, d: 15 },
-  thigh: { length: 85, w: 35, d: 30 },
-  shin: { length: 85, w: 30, d: 25 },
-  foot: { length: 100, w: 55, h: 20 },
+  totalHeight: 1800,
+  shoulderWidth: 480,
+  maxDepth: 260,
+  head: { w: 190, h: 240, d: 200 },
+  neck: { h: 100 },
+  torso: { w: 360, h: 520, d: 220 },
+  pelvis: { w: 320, h: 160, d: 200 },
+  upperArm: { length: 320, w: 90, d: 90 },
+  forearm: { length: 280, w: 80, d: 75 },
+  hand: { length: 190, w: 95, d: 35 },
+  thigh: { length: 440, w: 130, d: 130 },
+  shin: { length: 420, w: 100, d: 95 },
+  foot: { length: 260, w: 100, h: 80 },
 };
 
 // ---- Simulation State ----

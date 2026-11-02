@@ -133,7 +133,7 @@ export const DynamicsAnalyzerPanel: React.FC<DynamicsAnalyzerPanelProps> = ({
       <span className="text-white">{dynamics.dofCount}</span>
       <span className="text-slate-600 mx-1">│</span>
       <span className="text-slate-500">MASS:</span>
-      <span className="text-white">{fN(dynamics.totalMass * 1000, 0)}g</span>
+      <span className="text-cyan-300 font-bold">{fN(dynamics.totalMass, 1)} kg</span>
       <span className="text-slate-600 mx-1">│</span>
       <span className="text-slate-500">STEP:</span>
       <span className="text-amber-300">#{dynamics.stepCount}</span>
@@ -654,8 +654,8 @@ function ContactsTab({ dynamics, sensors, polySvg, footCorners, stabilityPct, ph
           </div>
           <div className="text-[10px] font-mono space-y-0.5">
             <div className="flex justify-between text-slate-400"><span>Gravity</span><span className="text-white">-9.81 m/s²</span></div>
-            <div className="flex justify-between text-slate-400"><span>Ground Stiffness</span><span className="text-white">5000 N/m</span></div>
-            <div className="flex justify-between text-slate-400"><span>Ground Damping</span><span className="text-white">50 N·s/m</span></div>
+            <div className="flex justify-between text-slate-400"><span>Ground Stiffness (k)</span><span className="text-white">85,000 N/m</span></div>
+            <div className="flex justify-between text-slate-400"><span>Ground Damping</span><span className="text-white">2,500 N·s/m</span></div>
             <div className="flex justify-between text-slate-400"><span>Contact Threshold</span><span className="text-white">8 mm</span></div>
             <div className="flex justify-between text-slate-400"><span>Ground Level</span><span className="text-cyan-300">{fN(dynamics.groundLevel * 1000, 1)} mm</span></div>
           </div>
@@ -675,7 +675,7 @@ function EnergyTab({ dynamics, sensors }: any) {
       <div className="bg-[#111827] border border-slate-700 rounded-lg p-3">
         <div className="flex items-center gap-2 mb-2">
           <Activity className="w-4 h-4 text-amber-400" />
-          <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">Energy Monitor (MuJoCo-style)</span>
+          <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">Energy Monitor (180 cm Biomimetic Humanoid)</span>
         </div>
         <div className="space-y-3">
           <EnergyBar label="Potential Energy (mgh)" value={dynamics.potentialEnergy} max={maxE} color="#3b82f6" unit="J" />
@@ -686,8 +686,8 @@ function EnergyTab({ dynamics, sensors }: any) {
           <div className="grid grid-cols-2 gap-2 text-[10px] mt-2 pt-2 border-t border-slate-700">
             <div className="text-slate-400">CoM Height: <span className="text-white font-mono">{fN(dynamics.com[1] * 1000, 1)} mm</span></div>
             <div className="text-slate-400">CoM Speed: <span className="text-white font-mono">{fN(Math.sqrt(dynamics.comVelocity[0]**2+dynamics.comVelocity[1]**2+dynamics.comVelocity[2]**2)*1000, 1)} mm/s</span></div>
-            <div className="text-slate-400">Total Mass: <span className="text-white font-mono">{fN(dynamics.totalMass * 1000, 0)} g</span></div>
-            <div className="text-slate-400">Weight: <span className="text-white font-mono">{fN(dynamics.totalMass * 9.81, 2)} N</span></div>
+            <div className="text-slate-400">Total Mass: <span className="text-cyan-300 font-mono font-bold">{fN(dynamics.totalMass, 1)} kg</span></div>
+            <div className="text-slate-400">Weight: <span className="text-white font-mono">{fN(dynamics.totalMass * 9.81, 1)} N</span></div>
           </div>
         </div>
       </div>
@@ -759,13 +759,14 @@ function EnergyTab({ dynamics, sensors }: any) {
         <div className="bg-[#111827] border border-slate-700 rounded-lg p-3">
           <div className="flex items-center gap-2 mb-1">
             <Battery className="w-4 h-4 text-emerald-400" />
-            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">2S Li-Ion Battery</span>
+            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">16S 58.8V Structural Battery Core</span>
           </div>
           <div className="text-[10px] font-mono space-y-0.5">
-            <div className="flex justify-between text-slate-400"><span>Capacity</span><span className="text-white">2000 mAh</span></div>
-            <div className="flex justify-between text-slate-400"><span>Nominal</span><span className="text-white">7.4 V</span></div>
-            <div className="flex justify-between text-slate-400"><span>Energy</span><span className="text-white">14.8 Wh</span></div>
-            <div className="flex justify-between text-slate-400"><span>Internal R</span><span className="text-white">~150 mΩ</span></div>
+            <div className="flex justify-between text-slate-400"><span>Capacity</span><span className="text-white">40.0 Ah (40,000 mAh)</span></div>
+            <div className="flex justify-between text-slate-400"><span>Nominal Voltage</span><span className="text-white">58.8 V</span></div>
+            <div className="flex justify-between text-slate-400"><span>Energy Storage</span><span className="text-cyan-300 font-bold">2,352 Wh (2.4 kWh)</span></div>
+            <div className="flex justify-between text-slate-400"><span>Internal R</span><span className="text-white">~38 mΩ</span></div>
+            <div className="flex justify-between text-slate-400"><span>Max Discharge</span><span className="text-emerald-400">140 A Continuous</span></div>
           </div>
         </div>
       </div>
