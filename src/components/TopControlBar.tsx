@@ -1,8 +1,9 @@
 import React from 'react';
 import { SimState, VoiceCommand, VOICE_COMMANDS } from '../types/simulation';
-import { Play, Pause, SkipForward, RotateCcw, Wifi, Bot, Layers, Cable, Box, BarChart3 } from 'lucide-react';
+import { Play, Pause, SkipForward, RotateCcw, Wifi, Bot, Layers, Cable, Box, BarChart3, User, Sparkles } from 'lucide-react';
 
 type ViewMode = 'simulator' | 'circuit' | 'dynamics';
+export type ModelScale = '180cm_biomimetic' | '45cm_hash_v3';
 
 interface TopControlBarProps {
   simState: SimState;
@@ -18,6 +19,8 @@ interface TopControlBarProps {
   onVoiceCommand: (cmd: VoiceCommand) => void;
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
+  modelScale?: ModelScale;
+  onModelScaleChange?: (scale: ModelScale) => void;
 }
 
 export const TopControlBar: React.FC<TopControlBarProps> = ({
@@ -34,6 +37,8 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
   onVoiceCommand,
   viewMode,
   onViewModeChange,
+  modelScale = '180cm_biomimetic',
+  onModelScaleChange,
 }) => {
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -55,7 +60,7 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
         <div className="flex items-center space-x-2 text-blue-400 font-bold tracking-wider text-sm bg-blue-950/40 px-2.5 py-1 rounded-md border border-blue-800/40">
           <Bot className="w-4 h-4 text-cyan-400" />
           <span className="text-white">SIMU<span className="text-blue-400">FORGE</span></span>
-          <span className="text-xs px-1.5 py-0.2 bg-blue-500/20 text-cyan-300 rounded font-mono">STUDIO</span>
+          <span className="text-xs px-1.5 py-0.2 bg-blue-500/20 text-cyan-300 rounded font-mono">BIOMIMETIC</span>
         </div>
 
         {/* View Mode Switcher */}
@@ -95,10 +100,34 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
           </button>
         </div>
 
-        <div className="hidden md:flex items-center space-x-1.5 text-xs text-slate-400 bg-[#0f172a] px-2 py-1 rounded border border-slate-800">
-          <Layers className="w-3.5 h-3.5 text-slate-500" />
-          <span>Hash V3 Humanoid (17-DOF)</span>
-        </div>
+        {/* Model Scale Selector Toggle */}
+        {onModelScaleChange && (
+          <div className="hidden lg:flex items-center bg-[#0a0e17] rounded-lg p-0.5 border border-cyan-800/40">
+            <button
+              onClick={() => onModelScaleChange('180cm_biomimetic')}
+              className={`flex items-center space-x-1 px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
+                modelScale === '180cm_biomimetic'
+                  ? 'bg-cyan-600/30 text-cyan-300 border border-cyan-500/50'
+                  : 'text-slate-500 hover:text-slate-300'
+              }`}
+              title="180 cm Biomimetic Humanoid with 4 anatomical layers & 24mm bionic eyeballs"
+            >
+              <User className="w-3 h-3" />
+              <span>180cm BIOMIMETIC</span>
+            </button>
+            <button
+              onClick={() => onModelScaleChange('45cm_hash_v3')}
+              className={`flex items-center space-x-1 px-2 py-1 rounded-md text-[10px] font-bold transition-all ${
+                modelScale === '45cm_hash_v3'
+                  ? 'bg-slate-700/50 text-slate-200 border border-slate-600'
+                  : 'text-slate-500 hover:text-slate-300'
+              }`}
+              title="Small 45 cm 17-DOF Hash V3 table prototype"
+            >
+              <span>45cm HASH V3</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Center: Transport Controls & Speed */}

@@ -1,4 +1,4 @@
-# SimuForge Studio — 17-DOF Humanoid Robot Digital Twin & Multi-Physics Simulator
+# SimuForge Studio — 180 cm Biomimetic Humanoid Twin & Multi-Physics Simulator
 
 [![Hugging Face Spaces](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces%20Live-FFD21E?style=flat&logo=huggingface&logoColor=black)](https://huggingface.co/spaces/Bedanta12/simuforge-studio)
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Live%20Demo-22c55e?style=flat&logo=github&logoColor=white)](https://rupac4530-creator.github.io/simuforge-studio/)
@@ -15,289 +15,185 @@
 | **⚡ Direct Web App** | [bedanta12-simuforge-studio.static.hf.space](https://bedanta12-simuforge-studio.static.hf.space/index.html) | Hugging Face CDN |
 | **🌐 GitHub Pages** | [rupac4530-creator.github.io/simuforge-studio](https://rupac4530-creator.github.io/simuforge-studio/) | GitHub Actions Automated Pages |
 | **💻 Source Code** | [github.com/rupac4530-creator/simuforge-studio](https://github.com/rupac4530-creator/simuforge-studio) | GitHub Repository |
-
-**SimuForge Studio** is an open-source, browser-native 3D robotics simulator, rigid-body multi-physics testbed, and digital twin engineered specifically for the **17-DOF Hash V3 Humanoid Robot**.
-
-Combining principles from foundational physics simulators (**MuJoCo**, **Drake**, **Webots**, **Gazebo**), SimuForge Studio delivers generalized coordinate kinematics, static inverse dynamics, ground reaction spring-damper contact mechanics, 6-DOF MEMS IMU sensor fusion, an interactive circuit workbench, and sandboxed firmware scripting—all running in real time in standard WebGL browsers.
+| **📄 Engineering Blueprint** | [docs/BIOMIMETIC_HUMANOID_BLUEPRINT.md](docs/BIOMIMETIC_HUMANOID_BLUEPRINT.md) | Exhaustive Multi-Physics Blueprint |
 
 ---
 
-## 🌟 Key Capabilities
+## 🌟 Overview: Full-Scale Humanoid Robotics & Multi-Physics Engineering
 
-### 1. OmniSim Rigid-Body Dynamics & Multi-Physics Engine
-- **Accurate Mass Distribution**: Real mass and inertia table spanning 13 distinct rigid bodies totaling ~1.30 kg (torso 380g, pelvis 260g, head 95g, thighs 75g×2, shins 60g×2, feet 40g×2, upper arms 50g×2, forearms 57g×2).
-- **Generalized Coordinates Kinematics**: Forward kinematics chain with accumulated 3×3 rotation matrices and spatial transforms for all 17 degrees of freedom.
-- **Center of Mass (CoM) & Zero Moment Point (ZMP)**: Live 3D CoM position tracking, velocity estimation, ground projection, and quasi-static ZMP prediction.
-- **Spring-Damper Contact Mechanics**: Linear spring-damper ground contact model ($k=5000\text{ N/m}$, $d=50\text{ N}\cdot\text{s/m}$) evaluating 4-corner sole penetration and active contact patch surface area.
-- **Support Polygon & Stability Margin**: Real-time Graham scan 2D convex hull calculation in the ground plane ($XZ$), point-in-polygon containment check, and edge-distance stability margin.
-- **Inverse Dynamics Gravity Compensation**: Analytical static torque estimation per joint:
-  $$\tau_i = \hat{\mathbf{e}}_i \cdot \sum_{j \in \text{distal}(i)} (\mathbf{r}_{\text{CoM}, j} - \mathbf{r}_{\text{joint}, i}) \times (m_j \mathbf{g})$$
-- **System Energy & Work**: Conservation of energy monitoring tracking gravitational potential energy ($PE = \sum m_i g h_i$), translational kinetic energy ($KE = \frac{1}{2} M v_{\text{CoM}}^2$), and mechanical work.
-- **Gait Phase Detection**: Automatic classification into *Double Support*, *Left Stance*, *Right Stance*, and *Flight/Falling*.
+**SimuForge Studio** is an open-source, browser-native 3D robotics simulation platform, rigid-body multi-physics testbed, and digital twin environment. 
 
-### 2. Physical Sensor Suite & Actuator Telemetry
-- **6-DOF MEMS IMU (MPU6050 / BNO055 Emulation)**:
-  - Proper **specific force** computation:
-    $$\mathbf{a}_{\text{measured}} = \mathbf{R}^T (\mathbf{a}_{\text{linear}} - \mathbf{g}_{\text{world}})$$
-    Reads $[0, +9.81, 0]\text{ m/s}^2$ at rest on flat ground.
-  - Allan variance bias random walk model and Box-Muller Gaussian sensor noise.
-  - Two-state complementary filter ($\alpha = 0.98$) fusing accelerometer gravity vectors and gyro rates for roll, pitch, and yaw.
-  - Sensor self-heating thermal curve ($25^\circ\text{C} \rightarrow 37^\circ\text{C}$).
-- **Foot Pressure & Center of Pressure (CoP)**: Ground reaction force distribution across feet with dynamic CoP coordinates.
-- **Motor Current, Power & Heat**: Per-servo mechanical power, electrical draw (nominal 6V rail), PWM duty cycle from position error, and actuator coil thermal estimation ($15^\circ\text{C/W}$).
-- **2S Li-ion Battery Discharge**: Dynamic cell voltage sag under instantaneous load ($R_{\text{int}} = 150\text{ m}\Omega$), capacity percentage, and remaining runtime.
-
-### 3. Dynamics Analyzer Panel (MuJoCo / Drake / Gazebo Quality)
-- **Top Bar View Mode Switcher**: Seamlessly toggle between **3D SIMULATOR**, **CIRCUIT EDITOR**, and **DYNAMICS**.
-- **World Statistics Status Bar**: High-level simulation telemetry: solver type, contact model, coordinates formulation, rigid body count, DOF count, simulation step count, sim time, active contact count, and total torque $\sum |\tau|$.
-- **Four Dedicated Analysis Tabs**:
-  - **Overview**: Circular stability gauge with percentage margin, gait phase badges, CoM/ZMP XYZ readouts, 200×200 2D support polygon SVG, 6-DOF IMU data grid, link mass breakdown table, energy progress bars, and battery status.
-  - **Joint Inspector**: Detailed 17-joint telemetry table with current angle, color-coded load bars, torque ($\text{N}\cdot\text{m}$), electrical wattage, mechanical stop limit badges (0–100%), angular velocity, and coil temperature.
-  - **Contacts & Stability**: Expanded ground projection canvas with CoM, ZMP, and CoP markers; left and right foot contact cards with normal forces ($\text{N}$), penetration depths ($\text{mm}$), and contact surface areas ($\text{mm}^2$); physical spring-damper parameter readouts.
-  - **Energy & Power**: Potential, kinetic, and total mechanical energy charts; electrical power breakdown; individual servo current and PWM duty cycle tables; Li-ion battery pack specifications.
-
-### 4. 3D Viewport Dynamics Overlays
-- **Pulsing CoM Marker**: Yellow sphere rendered directly at the 3D Center of Mass with a dashed ground projection drop line and ground projection dot.
-- **Support Polygon Projection**: Semi-transparent ground polygon (green when dynamically stable, pulsating red during fall risk).
-- **Contact Patches & Force Vectors**: Blue/purple ground contact soles with vertical force lines proportional to normal force.
-
-### 5. Interactive Circuit & Wiring Workbench
-- **Full-Screen Photorealistic Hardware Schematic**: SVG models of ESP32 DevKit V1, Dual PCA9685 drivers, SSD1306 0.96" OLED, MAX98357A I2S DAC, PAM8403 amplifier, HC-SR04 ultrasonic sensor, 2S 7.4V battery pack, 6V 5A UBEC, 5V 3A buck converter, speaker, and status LED.
-- **Interactive Wiring & Pin Routing**: Click pins to create or disconnect wires with smooth bezier routing.
-- **Signal-Type Color Coding**: Power (Red), Ground (Dark Grey), I²C (Blue), I²S (Green), GPIO (Orange), and PWM (Violet).
-- **C++/Arduino Code Inspection**: Click any wire connection to inspect the matching Arduino/ESP32 C++ firmware snippet and library call.
-- **Live OLED & Servo Monitor**: Test all 8 facial expressions and observe 17-channel PCA9685 servo telemetry in real time.
-
-### 6. Smartphone Remote & Voice Operations
-- **Live Speech Recognition**: Uses the Web Speech API (`webkitSpeechRecognition`) for natural voice control.
-- **16 Pre-Programmed Gestures & Gaits**: *Say Hi*, *Shake Hands*, *Hands Up/Down*, *Bicep Flexes*, *Bow*, *Sit Down*, *Stand Up*, *Forward Walk*, *Backward Walk*, *Turn Left/Right*, *Push-Ups*, and *Celebration Dance*.
-- **D-Pad Locomotion**: Precise walking and turning with visual feedback.
-- **Safety**: Motor arm/disarm toggle and Emergency Stop (E-Stop).
-
-### 7. Integrated Monaco Code Studio & Extended API
-- Sandboxed JavaScript runtime with full robot control and physics introspection API:
-  - `robot.setServo(name, angle)`
-  - `robot.homePosition()`
-  - `robot.wait(ms)`
-  - `robot.log(msg)`
-  - `robot.speak(text)`
-  - `robot.getIMU()` — Accelerometer, gyroscope, and complementary filtered roll/pitch/yaw
-  - `robot.getCoM()` — Center of mass coordinates and stability margin
-  - `robot.getJointTorques()` — Real-time gravity compensation torques
-  - `robot.getFootContacts()` — Left and right foot normal forces and contact states
-  - `robot.getPowerDraw()` — Total watts, current, and battery runtime
-  - `robot.getGaitPhase()` — Current gait state (*double_support*, *left_stance*, etc.)
-  - `robot.getZMP()` — Zero moment point coordinates
+The studio features two complete robot architectures:
+1. **180 cm Biomimetic Humanoid Digital Twin (`180cm_biomimetic`)**: An adult human-scale anthropomorphic digital twin inspired by state-of-the-art research platforms:
+   - **Engineered Arts *Ameca*** (facial expressiveness and Bowden cable actuation)
+   - **Hanson Robotics *Sophia*** (Frubber porous dermal mechanics and micro-wrinkles)
+   - **JSK University of Tokyo *Kenshiro / Kengoro*** (musculoskeletal McKibben hydro-muscles and articulated spine)
+   - **Disney Research Animatronics** (high-speed gaze saccades and coordinated eyelid-gaze kinematics)
+   - **Tesla *Optimus Gen 2* & Figure AI *Figure 02*** (high-torque Quasi-Direct Drive rotary actuators, roller screws, and 58V power architecture).
+2. **17-DOF Hash V3 Miniature Humanoid Robot (`45cm_hash_v3`)**: A 45 cm bipedal robot platform with generalized coordinate kinematics, static inverse dynamics, ground reaction contact mechanics, 6-DOF MEMS IMU sensor fusion, an interactive circuit workbench, and sandboxed firmware scripting.
 
 ---
 
-## 📐 Engineering Diagrams & Hardware Documentation
+## 🔬 SOTA Biomimetic Humanoid Foundations
 
-The kinematic model, electronic interfaces, and structural dimensions are derived directly from the physical humanoid robot build documentation:
+SimuForge Studio was architected by dissecting the core engineering accomplishments of the world's most advanced humanoid platforms:
 
-### 1. Structural Dimensions & Physical Specifications
-![Structure and Dimensions](docs/diagrams/01-complete-structure-and-dimensions.jpg)
+| Robot System | Height / Weight | Facial DoF & Dermis | Actuation Architecture | Vision & Gaze | Primary Engineering Lesson |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Engineered Arts Ameca** | 187 cm / 72 kg | 27 cranial DoF; proprietary silicone; motorized lips/brows | Coreless linear/rotary servos; Bowden neck linkage | Binocular cameras in 24mm eyeballs; independent vergence | Decouple cranial motors into clavicle/torso; route via Bowden cables |
+| **Hanson Robotics Sophia** | ~168 cm / 45 kg (bust) | 36+ cranial DoF; patented **Frubber** elastomer | Sub-micro servomotors pulling skin via anchor pegs | Eye cameras behind pupil apertures; face tracking | Frubber porous matrix drastically reduces servo stall compared to dense silicones |
+| **JSK Kengoro / Kenshiro** | 167 cm / 54 kg | Skeletal head; zero facial skin | **116 McKibben artificial hydro-muscles**; redundant tendon routing | Stereo vision in head; IMU spine balance | Musculoskeletal hydro-muscles provide biological compliance and shock absorption |
+| **Disney Research Animatronics** | 175 cm / 65 kg | 19 facial DoF; multi-layer soft silicone with embedded anchors | Hybrid pneumatic-electric actuation with custom 4-bar linkages | High-speed gaze saccades (up to 400°/s) with eyelid-gaze coordination | Saccade motion blur vs global shutter in camera sensors |
+| **Tesla Optimus Gen 2** | 173 cm / 57 kg | Screen visor (no expressive face); monolithic aesthetic | Custom planetary QDD (up to 180 Nm) + linear roller screws | Monocular/stereo RGB + pure vision Occupancy Network | High-efficiency 52V/48V power distribution and custom structural castings |
+| **Figure AI Figure 02** | 178 cm / 70 kg | Face visor; integrated audio array | Custom rotary QDD + linear actuators; 16-DoF hands | 6 onboard RGB cameras, vision-language-action (VLA) AI | Integrated compute routing; cable-free limb bus architecture |
 
-* **Overall Dimensions**: 420 mm standing height (expandable to 450 mm), 280 mm shoulder-to-shoulder width, 120 mm front-to-back depth, with an assembled weight of 1.2–1.5 kg.
-* **Materials & Chassis**: Cut and bent 1.0–2.0 mm lightweight aluminum alloy sheet for torso and limb linkages, 3.0–5.0 mm laser-cut acrylic chest and head covers, 3D printed PLA/ABS head frame, aluminum U-channels, and silicone anti-vibration foot soles.
-* **Kinematic Degrees of Freedom (17-DOF)**:
-  * **Legs (5 DOF × 2 = 10 DOF)**: Hip Yaw, Hip Roll, Hip Pitch, Knee Pitch, Ankle Pitch.
-  * **Arms (3 DOF × 2 = 6 DOF)**: Shoulder Pitch, Shoulder Roll, Elbow Pitch.
-  * **Head (1 DOF)**: Neck Yaw rotation.
-* **Head & Facial Unit**: Integrates a 0.96" SSD1306 OLED screen (128×64 pixels) for animated facial expressions and dual HC-SR04 ultrasonic transducers for obstacle awareness.
-
----
-
-### 2. Mechanical Exploded View & Joint Assembly
-![Mechanical Assembly and Exploded View](docs/diagrams/02-mechanical-assembly-and-exploded-view.jpg)
-
-* **Sub-Assembly Breakdown**:
-  * **Head Assembly**: Front faceplate, OLED display bracket, ultrasonic sensor mounting cradle, 3D printed rear enclosure, and pan servo bracket.
-  * **Torso Enclosure**: Heavy-duty structural aluminum frame with front, back, and side plates enclosing the electronics bay, battery compartment, and dual servo driver stack.
-  * **Arm Assemblies (x2)**: Shoulder pitch bracket, upper arm U-channel link (100 mm), elbow pitch servo, forearm bracket (90 mm), and passive multi-jointed gripping hand (70 mm).
-  * **Leg Assemblies (x2)**: Pelvis mounting bracket, hip rotation joint, thigh link (100 mm), knee bend joint, shin link (100 mm), ankle pivot, and broad aluminum foot plate (100 × 60 × 20 mm).
-* **Hardware & Fasteners**: High-tensile M3 (8–12 mm) and M4 (12–16 mm) stainless steel hex-socket machine screws, aluminum standoffs/spacers, flange bearings, and nylon locknuts.
-* **Assembly Workflow**: Follows an 8-stage pipeline from individual servo electrical zeroing (90° neutral calibration), sub-chassis assembly, harness routing, to final center-of-mass alignment.
+<div align="center">
+  <img src="docs/diagrams/ameca_head.png" width="22%" alt="Ameca Head" />
+  <img src="docs/diagrams/eye_gimbal.png" width="24%" alt="Bionic Eye Gimbal" />
+  <img src="docs/diagrams/sophia_robot.png" width="20%" alt="Sophia Robot" />
+  <img src="docs/diagrams/musculoskeletal_kenshiro.png" width="28%" alt="Musculoskeletal Kenshiro" />
+</div>
 
 ---
 
-### 3. Internal Electronics & Hardware Placement
-![Internal Electronics and Hardware Placement](docs/diagrams/03-internal-electronics-hardware-layout.jpg)
+## 🧬 4 Concentric Anatomical Layers with Live X-Ray Dissection
 
-* **Torso Interior Layout**:
-  * **Primary Controller**: ESP32 DevKit V1 (Xtensa dual-core @ 240 MHz, integrated BLE 4.2 & 802.11 b/g/n Wi-Fi) mounted in the upper torso.
-  * **Servo Driver Stack**: Dual PCA9685 16-channel 12-bit PWM controllers communicating over I²C (`0x40` primary, `0x41` auxiliary).
-  * **Audio Subsystem**: PAM8403 / MAX98357A audio amplifier paired with a 4Ω 3W dynamic speaker located behind the upper chest vent.
-  * **Power Bay**: Low-center-of-mass bottom compartment housing the 2S 7.4V Li-ion battery pack and high-efficiency switching buck converters.
-* **Wiring Channels**: Recessed internal raceways protect servo signal lines (PWM), I²C buses, and high-current power cables from pinching during multi-axis articulation.
+SimuForge Studio introduces a **4-Layer Concentric Anatomical Architecture** with independent opacity sliders ($0.0 \rightarrow 1.0$) and smart raycast picking:
 
----
+```
+[Layer 1: Integumentary / Silicone Dermis]   --> Opacity 0.0 to 1.0 (SSS PBR, Hair, Taxels)
+       │
+[Layer 2: Musculoskeletal / Actuators]       --> Opacity 0.0 to 1.0 (Hydro-Muscles, Bowden FACS, QDD)
+       │
+[Layer 3: Endoskeleton / Vascularity]        --> Opacity 0.0 to 1.0 (Carbon/7075-T6 Bones, Cooling Capillaries)
+       │
+[Layer 4: Bionic Eyeballs, Compute & Core]   --> Opacity 0.0 to 1.0 (24mm Eyes, Iris, MIPI PCB, Orin Brain, 16S Pack)
+```
 
-### 4. Software & Control System Architecture
-![Software and Control Architecture](docs/diagrams/04-software-and-control-architecture.jpg)
-
-* **Communication Pipeline**:
-  $$\text{Voice / Smartphone UI} \xrightarrow{\text{BLE / Web Speech}} \text{ESP32 DevKit} \xrightarrow{\text{I²C Bus}} \text{Dual PCA9685} \xrightarrow{\text{50 Hz PWM}} \text{17× Servos}$$
-* **System Flow & State Machine**:
-  * Non-blocking command dispatcher parses incoming Bluetooth/serial strings.
-  * Forward kinematics trajectory generator computes smoothstep joint interpolation curves.
-  * Synchronized multi-modal feedback triggers matching OLED facial bitmaps and audio playback via I²S DAC.
-* **Extensible Firmware**: Designed for seamless transition from the browser simulator to physical C++/Arduino IDE firmware (`Adafruit_PWMServoDriver`, `Wire`, `ESP32Servo`, `U8g2lib`).
-
----
-
-### 5. Wiring Schematic & Power Distribution
-![Wiring and Power Distribution Diagram](docs/diagrams/05-wiring-and-power-distribution-diagram.jpg)
-
-* **Dual-Rail Power Architecture**:
-  * **High-Current Servo Rail**: 2S 7.4V Li-ion $\rightarrow$ 10A Master Fuse $\rightarrow$ Toggle Switch $\rightarrow$ 6V 5A UBEC $\rightarrow$ PCA9685 V+ terminals. Prevents motor back-EMF and inductive current spikes from resetting the controller.
-  * **Logic Rail**: 7.4V $\rightarrow$ 5V 3A Buck Converter $\rightarrow$ ESP32 VIN, logic VCC for PCA9685 drivers, OLED display, and audio amplifier.
-  * **Sensor Rail**: 3.3V regulated output from ESP32 for low-noise sensor references.
-* **Pinout & Bus Topology**:
-  * **I²C Bus**: SDA (GPIO 21), SCL (GPIO 22) operating at 400 kHz fast mode, shared by PCA9685 #1 (`0x40`), PCA9685 #2 (`0x41`), and SSD1306 OLED (`0x3C`).
-  * **Ultrasonic (HC-SR04)**: Trigger $\rightarrow$ GPIO 12, Echo $\rightarrow$ GPIO 14 (with 5V-to-3.3V voltage divider).
-  * **I²S Audio DAC**: BCLK $\rightarrow$ GPIO 26, LRC $\rightarrow$ GPIO 25, DOUT $\rightarrow$ GPIO 27.
-  * **Status Telemetry**: Onboard Heartbeat LED $\rightarrow$ GPIO 2.
-
----
-
-## 💻 Tech Stack
-
-| Category | Technologies |
-| :--- | :--- |
-| **Frontend Core** | React 18, TypeScript 5.6, Vite 6 |
-| **3D Rendering** | Three.js (r170), `@react-three/fiber`, `@react-three/drei` |
-| **Physics & Dynamics**| Generalized Coordinates FK, Inverse Dynamics Gravity Solver, Spring-Damper Contact |
-| **Sensors & Fusion**| Specific Force MEMS IMU, Complementary Filter, Allan Variance Bias Walk |
-| **Code Editor** | Monaco Editor (`@monaco-editor/react`) |
-| **Charts & Signals**| SVG Vector Visualization, Custom Responsive Canvases |
-| **Styling & UI** | TailwindCSS 3.4, Lucide React Icons |
-| **Voice Recognition**| HTML5 Web Speech API |
+1. **Layer 1: Integumentary & Dermal System**:
+   - Translucent silicone dermis with Subsurface Scattering (SSS) PBR shader.
+   - Formulations: `Smooth-On Ecoflex 00-10`, `Ecoflex 00-20`, `Frubber`, `Smooth-On Dragon Skin 10`.
+   - Instanced 3D hair follicles for eyebrows, eyelashes, and hairline punched at physiological angles ($15^\circ$–$45^\circ$).
+   - Sub-dermal resistive e-Skin heating matrix maintaining $32^\circ\text{C}$–$36^\circ\text{C}$ surface warmth.
+2. **Layer 2: Musculoskeletal & Actuation System**:
+   - **32-DoF Cranial FACS Rig**: Bowden cable paths routing from clavicle/cervical servos to facial anchor pegs. Standardized Action Units (AUs): AU1, AU2, AU4, AU5, AU6, AU9, AU12 (Duchenne Smile), AU15, AU20, AU25, AU26 (Jaw Drop), AU45 (Blink).
+   - **Upper-Body McKibben Hydro-Muscles**: Braided artificial hydro-muscles driving shoulder complex, biceps, triceps, and 24-DoF anthropomorphic hands.
+   - **Lower-Body High-Torque QDD Actuators**: Frameless PMSM motors with 6:1/8:1 planetary gearboxes (180–360 Nm) and planetary roller-screw linear actuators in thighs/calves (up to 8,000 N).
+3. **Layer 3: Endoskeleton & Thermal Vascularity**:
+   - **CNC 7075-T6 Anodized Aluminum** core with structural carbon-fiber shells.
+   - **Articulated 24-Vertebrae Spine** with elastomeric intervertebral damping discs.
+   - **Closed-Loop Liquid Cooling Network**: Micro-capillary fluid conduits routing deionized water + 15% propylene glycol from thoracic compute and hip motors through radiator exhausts.
+4. **Layer 4: Internal Micro-Electronics & Bionic Eyeballs**:
+   - **24 mm Hollow Spherical Eyeball Assemblies** on 6-DoF dual-eye gimbal:
+     - Independent left/right yaw ($\pm 35^\circ$) for binocular vergence.
+     - Coupled pitch ($\pm 30^\circ$) for gaze elevation.
+     - Coordinated upper/lower eyelids ($\pm 45^\circ$).
+     - Actuated 6-blade Nitinol SMA iris dynamically adjusting pupil aperture between **2.0 mm** and **7.0 mm**.
+     - 8×8 mm micro-camera PCB mounted behind pupil with MIPI CSI-2 flex ribbon.
+   - **Thoracic Compute & Power Core**:
+     - Cerebrum: Dual NVIDIA Jetson Thor/Orin AI modules.
+     - Cerebellum: TI TMS320F28388D C2000 real-time EtherCAT microcontrollers.
+     - Battery: 16S 58.8V nominal NMC 21700 or Silicon-Anode 4680 cell pack (1.8–2.4 kWh).
 
 ---
 
-## 🚀 Quick Start (Local Development)
+## ⚡ Live Modular Hot-Swapping Engine (`ComponentRegistry`)
+
+Every component in SimuForge Studio is hot-swappable in real time via the **Live Module Editor Panel**:
+
+| Component Category | Swappable Hardware Options | Technical Specifications & Consequence Impact |
+| :--- | :--- | :--- |
+| **Eyeball Camera** | **Sony IMX219 (8MP)** | 3280×2464, 60 FPS, Rolling Shutter; 180 mW; visible skew during fast saccades. |
+| | **OmniVision OV9281 (1MP)** | 1280×800, 120 FPS, **Global Shutter**; 140 mW; zero motion blur, ultra-fast SLAM. |
+| | **OmniVision OV5640 (5MP)** | 2592×1944, 90 FPS, Auto-Focus VCM; 220 mW; micro lens barrel, vivid color. |
+| | **Prophesee Gen4.1 Neuromorphic** | 1280×720, 10,000+ FPS equiv, 120 dB dynamic range, 50 mW; microsecond event stream. |
+| **Dermal Silicone** | **Smooth-On Ecoflex 00-10** | Shore 00-10, Modulus $0.05\text{ MPa}$, 800% elongation; ultra-soft, low torque. |
+| | **Smooth-On Ecoflex 00-20** | Shore 00-20, Modulus $0.08\text{ MPa}$; balanced compliance, standard skin. |
+| | **Nanoporous Frubber** | Porous elastomer, Modulus $0.03\text{ MPa}$; **40% lower servo load**, micro-wrinkle fidelity. |
+| | **Smooth-On Dragon Skin 10** | Shore 10A, Modulus $0.59\text{ MPa}$ ($11.8\times$ stiffer); **triggers cranial servo stall warnings**. |
+| **Cranial Actuator** | **Sub-Micro PWM Servos** | 0.28 Nm peak torque, 9g weight; budget baseline. |
+| | **Coreless Linear Micro-Servos**| Faulhaber 0615 + micro lead screw, 15N force, 0.02mm resolution, zero backlash. |
+| **Battery Core** | **16S NMC 21700 (1.8 kWh)** | Samsung 50G, 58.8V nom, 30Ah, 11.2 kg, 3.5 hr runtime. |
+| | **16S Silicon-Anode 4680 (2.4 kWh)** | Amprius / 4680, 60V, 40Ah, 9.8 kg, **5.2 hr runtime**, 1.4 kg lighter. |
+
+---
+
+## 🧮 Multi-Physics Consequence Models
+
+### 1. Ocular Optics & Iris Dilation
+The effective focal ratio ($f$-number) $N$ is governed by focal length $f$ and pupil aperture diameter $D$:
+$$N = \frac{f}{D}, \quad D \in [2.0\text{ mm}, 7.0\text{ mm}]$$
+Dilating the pupil from 2.0 mm to 7.0 mm produces:
+$$\Delta \text{Throughput} = \left(\frac{7.0}{2.0}\right)^2 = 12.25\times \quad (+3.61\text{ EV})$$
+Binocular stereoscopic vergence angle $\theta_v$ for inter-pupillary distance $IPD = 64\text{ mm}$:
+$$\theta_{\text{vergence}} = 2 \arctan\left(\frac{IPD / 2}{d_{\text{target}}}\right) = 2 \arctan\left(\frac{0.032}{d_{\text{target}}}\right)$$
+
+### 2. Silicone Elasticity & Servo Stall Warnings
+Force required to deform the facial elastomer:
+$$F_{\text{cable}} = E_{\text{silicone}} \cdot A_{\text{anchor}} \cdot \epsilon + \mu \frac{d\epsilon}{dt}, \quad \tau_{\text{servo}} = F_{\text{cable}} \cdot r_{\text{pulley}}$$
+Selecting stiff elastomers (`Dragon Skin 10`, $E = 0.59\text{ MPa}$) during a Duchenne smile ($AU12$) causes $\tau_{\text{servo}} > \tau_{\text{stall}}$, immediately triggering red servo stall alerts and mechanical strain heatmaps.
+
+### 3. Thermal Equilibrium & Coolant Convection
+Core and skull temperature cascade:
+$$C_{\text{thermal}} \frac{dT_{\text{core}}}{dt} = P_{\text{heat}} - \dot{m} c_p (T_{\text{out}} - T_{\text{in}}) - \dot{Q}_{\text{exhaust}} - \dot{Q}_{\text{skin\_loss}}$$
+
+---
+
+## 🎮 Interactive UI Panels & Viewports
+
+- **Floating Layer HUD (`LayerControlBar.tsx`)**: Individual opacity sliders for Integumentary, Musculoskeletal, Endoskeleton, and Electronics, with X-Ray Dissection Mode and preset shortcuts (*Full Anatomical*, *Skeletal*, *Muscular*, *Eyeball Dive*).
+- **Synthetic "Robot Eye View" PiP Viewport (`RobotEyePiPViewport.tsx`)**: Floating viewport rendering the world from inside the 24 mm eyeball pupil. Dynamically simulates:
+  - Aperture exposure gain & depth-of-field blur.
+  - Rolling shutter wobble skew during fast saccades vs crisp Global Shutter frames.
+  - Neuromorphic temporal contrast event display.
+  - Depth map projection & SLAM latency telemetry.
+- **Facial Expression & Lip-Sync Studio (`FacialExpressionStudio.tsx`)**:
+  - FACS Action Unit sliders for brows, eyes, nose, cheeks, and mouth.
+  - Audio2Face phoneme lip-sync presets (`A`, `E`, `I`, `O`, `U`, `B_P_M`, `L_T`, `F_V`).
+  - Emotion presets: *Neutral*, *Joy / Smile*, *Surprise*, *Anger*, *Suspicion*, *Sorrow*.
+  - Live cable tension gauges and servo overload telemetry.
+- **Logarithmic Depth Micro-Zoom**:
+  - Three.js WebGLRenderer configured with `logarithmicDepthBuffer: true`, near plane `0.0005 m` (0.5 mm), and far plane `50.0 m`.
+  - Zero Z-fighting or near-plane clipping when zooming from 1.8 meters down into the 24 mm eyeball socket.
+
+---
+
+## 🚀 Quickstart & Local Development
 
 ### Prerequisites
-
-Ensure you have **Node.js 18+** and **npm / pnpm / yarn** installed:
-
-```bash
-node -v
-npm -v
-```
+- [Node.js](https://nodejs.org/) v18+ 
+- [pnpm](https://pnpm.io/) or `npm`
 
 ### Installation
+```bash
+# Clone the repository
+git clone https://github.com/rupac4530-creator/simuforge-studio.git
+cd simuforge-studio
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/rupac4530-creator/simuforge-studio.git
-   cd simuforge-studio
-   ```
+# Install dependencies
+npm install
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Start the development server:
-   ```bash
-   npx vite --host
-   ```
-
-4. Open your browser at:
-   ```
-   http://localhost:5173
-   ```
+# Start local development server
+npm run dev
+```
 
 ### Production Build
-
-To verify TypeScript typing and create an optimized production build:
-
 ```bash
-npx vite build
-```
-
-The compiled static assets will be output to the `dist/` directory ready for deployment to any static hosting provider.
-
----
-
-## 📁 Repository Structure
-
-```
-simuforge-studio/
-├── docs/
-│   └── diagrams/                     # High-resolution robot blueprints & schematics
-│       ├── 01-complete-structure-and-dimensions.jpg
-│       ├── 02-mechanical-assembly-and-exploded-view.jpg
-│       ├── 03-internal-electronics-hardware-layout.jpg
-│       ├── 04-software-and-control-architecture.jpg
-│       └── 05-wiring-and-power-distribution-diagram.jpg
-├── public/                           # Static assets & icons
-├── src/
-│   ├── components/
-│   │   ├── CameraControlHUD.tsx       # Orbit, top, chase, side, FPV camera presets & HUD toggles
-│   │   ├── CircuitEditorPanel.tsx     # Interactive SVG hardware workbench, editable wiring & code
-│   │   ├── CodeSpaceIDE.tsx           # Monaco code editor with ESP32 sandboxed runtime
-│   │   ├── DynamicsAnalyzerPanel.tsx  # 4-tab MuJoCo/Drake dynamics & energy analyzer
-│   │   ├── HardwareInspectorPanel.tsx # 6-tab modal for diagnostic telemetry
-│   │   ├── HumanoidModel.tsx          # 17-DOF articulated 3D mesh with semi-transparent torso
-│   │   ├── PhoneRemoteHUD.tsx         # Virtual mobile remote with Web Speech & D-pad
-│   │   ├── SceneTreePanel.tsx         # Webots-style hierarchical scene & servo inspector
-│   │   ├── SignalAnalyzerPanel.tsx    # RF link propagation & oscilloscope panel
-│   │   ├── TopControlBar.tsx          # Transport, view switcher (Simulator/Circuit/Dynamics), status
-│   │   └── Viewport3D.tsx             # Three.js Canvas, shadow maps, lighting, dynamics overlays
-│   ├── engine/
-│   │   ├── DynamicsEngine.ts          # 13-link rigid body kinematics, CoM, ZMP, torques, energy
-│   │   ├── HumanoidKinematics.ts      # 17-DOF forward kinematics & gait animator
-│   │   ├── SensorSuite.ts             # 6-DOF IMU specific force, complementary filter, power profile
-│   │   └── SignalEngine.ts            # RF propagation & multi-layer wall loss calculator
-│   ├── types/
-│   │   └── simulation.ts              # Master TypeScript interfaces, PCA map & constants
-│   ├── App.tsx                        # Root application orchestrator
-│   ├── index.css                      # Global styles & custom scrollbars
-│   └── main.tsx                       # React DOM entry point
-├── index.html
-├── package.json
-├── postcss.config.js
-├── tailwind.config.js
-├── tsconfig.json
-└── vite.config.ts
+npm run build
 ```
 
 ---
 
-## 🛠️ Usage Guide
+## 👥 Authors & Acknowledgments
 
-1. **Viewing Dynamics & Multi-Physics**:
-   * Click **DYNAMICS** in the top navigation bar to access the full-screen physics dashboard.
-   * Switch between **Overview**, **Joint Inspector**, **Contacts & Stability**, and **Energy & Power** tabs to monitor real-time mechanical and electrical telemetry.
-   * Switch back to **3D SIMULATOR** and check **CoM** and **Forces** on the floating Camera HUD to see 3D visual markers for the Center of Mass, support polygon, and contact forces.
-2. **Switching to Circuit Editor**:
-   * Click **CIRCUIT EDITOR** in the top bar to inspect hardware wiring. Click pins to route wires, click wires to inspect firmware C++ snippets, or test OLED facial expressions.
-3. **Walking & Turning**:
-   * Open the **Phone Remote** $\rightarrow$ tap the Arrow buttons to command walking and turning routines.
-4. **Natural Voice Control**:
-   * Tap **🎤 TAP TO SPEAK** on the Phone Remote and speak gestures like *"Say Hi"*, *"Move Forward"*, *"Turn Left"*, *"Dance"*, or *"Sit Down"*.
-5. **Writing Custom Scripts with Extended API**:
-   * Use the **Controller Code Space** at the bottom to write custom routines:
-     ```javascript
-     async function stabilizeGait() {
-       robot.log("Checking IMU and CoM stability...");
-       const imu = robot.getIMU();
-       robot.log(`Current Pitch: ${imu.pitch.toFixed(1)}°, Roll: ${imu.roll.toFixed(1)}°`);
-       const com = robot.getCoM();
-       robot.log(`CoM Stable: ${com.isStable}, Margin: ${(com.stabilityMargin * 1000).toFixed(1)}mm`);
-       const torques = robot.getJointTorques();
-       robot.log(`R_Knee_Pitch Torque: ${torques.R_Knee_Pitch.toFixed(3)} N·m`);
-     }
-     stabilizeGait();
-     ```
+- **Lead Architect & Engineer**: [Bedanta Chatterjee](https://github.com/rupac4530-creator)
+- **Email**: rupac4530@gmail.com
+- **Hugging Face**: [@Bedanta12](https://huggingface.co/Bedanta12)
+- **GitHub**: [@rupac4530-creator](https://github.com/rupac4530-creator)
+
+Inspired by foundational research from Google DeepMind (*MuJoCo*), Robot Locomotion Group (*Drake*), Cyberbotics (*Webots*), Open Robotics (*Gazebo*), JSK University of Tokyo (*Kengoro*), Engineered Arts (*Ameca*), Hanson Robotics (*Sophia*), and Disney Research.
 
 ---
 
-## 📄 License
-
-This project is open-source under the [MIT License](LICENSE).
-
-Developed with ❤️ by **[BEDANTA CHATTERJEE](https://github.com/rupac4530-creator)** ([@Bedanta12 on Hugging Face](https://huggingface.co/Bedanta12)).
+## 📜 License
+Distributed under the **MIT License**. See `LICENSE` for details.
